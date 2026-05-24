@@ -16,6 +16,7 @@ from patchwork.models import Patch
 from patchwork.models import PatchChangeNotification
 from patchwork.models import PatchComment
 from patchwork.models import Series
+from patchwork.webhooks import deliver_webhooks
 
 
 @receiver(pre_save, sender=Patch)
@@ -69,7 +70,7 @@ def create_cover_created_event(sender, instance, created, raw, **kwargs):
     if raw or not created:
         return
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))
 
 
 @receiver(post_save, sender=Patch)
@@ -85,7 +86,7 @@ def create_patch_created_event(sender, instance, created, raw, **kwargs):
     if raw or not created:
         return
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))
 
 
 @receiver(pre_save, sender=Patch)
@@ -109,7 +110,7 @@ def create_patch_state_changed_event(sender, instance, raw, **kwargs):
     if orig_patch.state == instance.state:
         return
 
-    create_event(instance, orig_patch.state, instance.state)
+    deliver_webhooks(create_event(instance, orig_patch.state, instance.state))
 
 
 @receiver(pre_save, sender=Patch)
@@ -133,7 +134,9 @@ def create_patch_delegated_event(sender, instance, raw, **kwargs):
     if orig_patch.delegate == instance.delegate:
         return
 
-    create_event(instance, orig_patch.delegate, instance.delegate)
+    deliver_webhooks(
+        create_event(instance, orig_patch.delegate, instance.delegate)
+    )
 
 
 @receiver(pre_save, sender=Patch)
@@ -155,7 +158,7 @@ def create_patch_relation_changed_event(sender, instance, raw, **kwargs):
     if orig_patch.related == instance.related:
         return
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))
 
 
 @receiver(pre_save, sender=Patch)
@@ -188,7 +191,7 @@ def create_patch_completed_event(sender, instance, raw, **kwargs):
     if predecessors.count() != instance.number - 1:
         return
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))
 
     # if this satisfies dependencies for successor patch, raise events for
     # those
@@ -199,7 +202,7 @@ def create_patch_completed_event(sender, instance, raw, **kwargs):
         if successor.number != count:
             break
 
-        create_event(successor)
+        deliver_webhooks(create_event(successor))
         count += 1
 
 
@@ -220,7 +223,7 @@ def create_check_created_event(sender, instance, created, raw, **kwargs):
     if raw or not created:
         return
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))
 
 
 @receiver(post_save, sender=Series)
@@ -236,7 +239,7 @@ def create_series_created_event(sender, instance, created, raw, **kwargs):
     if raw or not created:
         return
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))
 
 
 @receiver(pre_save, sender=Patch)
@@ -270,7 +273,7 @@ def create_series_completed_event(sender, instance, raw, **kwargs):
     # we can't use "series.received_all" here since we haven't actually saved
     # the instance yet so we duplicate that logic here but with an offset
     if (instance.series.received_total + 1) >= instance.series.total:
-        create_event(instance.series)
+        deliver_webhooks(create_event(instance.series))
 
 
 @receiver(post_save, sender=CoverComment)
@@ -283,7 +286,7 @@ def create_cover_comment_created_event(sender, instance, raw, **kwargs):
             cover_comment=comment,
         )
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))
 
 
 @receiver(post_save, sender=PatchComment)
@@ -296,4 +299,4 @@ def create_patch_comment_created_event(sender, instance, raw, **kwargs):
             patch_comment=comment,
         )
 
-    create_event(instance)
+    deliver_webhooks(create_event(instance))

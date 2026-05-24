@@ -229,6 +229,7 @@ if settings.ENABLE_REST_API:
     from patchwork.api import project as api_project_views  # noqa
     from patchwork.api import series as api_series_views  # noqa
     from patchwork.api import user as api_user_views  # noqa
+    from patchwork.api import webhook as api_webhook_views  # noqa
 
     api_patterns = [
         path('', api_index_views.IndexView.as_view(), name='api-index'),
@@ -345,18 +346,33 @@ if settings.ENABLE_REST_API:
         ),
     ]
 
+    api_1_5_patterns = [
+        path(
+            'projects/<project_id>/webhooks/',
+            api_webhook_views.WebhookList.as_view(),
+            name='api-webhook-list',
+        ),
+        path(
+            'projects/<project_id>/webhooks/<int:pk>/',
+            api_webhook_views.WebhookDetail.as_view(),
+            name='api-webhook-detail',
+        ),
+    ]
+
     urlpatterns += [
         re_path(
-            r'^api/(?:(?P<version>(1.0|1.1|1.2|1.3|1.4))/)?',
+            r'^api/(?:(?P<version>(1.0|1.1|1.2|1.3|1.4|1.5))/)?',
             include(api_patterns),
         ),
         re_path(
-            r'^api/(?:(?P<version>(1.1|1.2|1.3|1.4))/)?',
+            r'^api/(?:(?P<version>(1.1|1.2|1.3|1.4|1.5))/)?',
             include(api_1_1_patterns),
         ),
         re_path(
-            r'^api/(?:(?P<version>(1.3|1.4))/)?', include(api_1_3_patterns)
+            r'^api/(?:(?P<version>(1.3|1.4|1.5))/)?',
+            include(api_1_3_patterns),
         ),
+        re_path(r'^api/(?:(?P<version>(1.5))/)?', include(api_1_5_patterns)),
         # token change
         path(
             'user/generate-token/',

@@ -23,6 +23,7 @@ from patchwork.models import Project
 from patchwork.models import Series
 from patchwork.models import SeriesReference
 from patchwork.models import State
+from patchwork.models import Webhook
 from patchwork.tests import TEST_PATCH_DIR
 
 SAMPLE_DIFF = """--- /dev/null\t2011-01-01 00:00:00.000000000 +0800
@@ -312,6 +313,20 @@ def create_series_reference(**kwargs):
     values.update(**kwargs)
 
     return SeriesReference.objects.create(**values)
+
+
+def create_webhook(**kwargs):
+    """Create 'Webhook' object."""
+    values = {
+        'project': create_project() if 'project' not in kwargs else None,
+        'url': 'http://example.com/webhook',
+        'secret': 'test-secret',
+        'events': '*',
+        'creator': create_user() if 'creator' not in kwargs else None,
+    }
+    values.update(**kwargs)
+
+    return Webhook.objects.create(**values)
 
 
 def create_relation(**kwargs):
