@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
@@ -13,6 +14,7 @@ from patchwork.models import Check
 from patchwork.models import Cover
 from patchwork.models import CoverComment
 from patchwork.models import DelegationRule
+from patchwork.models import Event
 from patchwork.models import Patch
 from patchwork.models import PatchComment
 from patchwork.models import PatchRelation
@@ -23,6 +25,7 @@ from patchwork.models import SeriesReference
 from patchwork.models import State
 from patchwork.models import Tag
 from patchwork.models import UserProfile
+from patchwork.models import Webhook
 
 
 class UserProfileInline(admin.StackedInline):
@@ -194,3 +197,49 @@ class TagAdmin(admin.ModelAdmin):
 @admin.register(PatchRelation)
 class PatchRelationAdmin(admin.ModelAdmin):
     model = PatchRelation
+
+
+class WebhookForm(forms.ModelForm):
+    ALL_EVENTS = '*'
+
+    event_select = forms.MultipleChoiceField(
+        choices=Event.CATEGORY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label='Events',
+        help_text='Select which events trigger this webhook. '
+        'Leave empty to receive all events.',
+    )
+
+    class Meta:
+        model = Webhook
+        fields = ('project', 'url', 'secret', 'active')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            events = self.instance.events
+            if events != self.ALL_EVENTS:
+                self.initial['event_select'] = events.split(',')
+
+    def save(self, commit=True):
+        selected = self.cleaned_data.get('event_select', [])
+        if selected:
+            self.instance.events = ','.join(selected)
+        else:
+            self.instance.events = self.ALL_EVENTS
+        return super().save(commit)
+
+
+@admin.register(Webhook)
+class WebhookAdmin(admin.ModelAdmin):
+    form = WebhookForm
+    list_display = ('project', 'url', 'events', 'active', 'creator', 'created')
+    list_filter = ('project', 'active')
+    search_fields = ('url', 'project__name')
+    readonly_fields = ('created',)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.creator = request.user
+        super().save_model(request, obj, form, change)

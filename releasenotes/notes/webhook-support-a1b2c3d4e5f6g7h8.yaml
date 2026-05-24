@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Webhook support for event delivery. Projects can now have webhooks
+    configured via the Django admin interface. When events occur (patch
+    created, series completed, state changed, etc.), patchwork will POST
+    a JSON payload to each matching webhook URL. Payloads can optionally
+    be signed with HMAC-SHA256 using a shared secret.
+api:
+  - |
+    The API version has been updated to v1.5.
+  - |
+    Add webhook management endpoints under
+    ``/api/projects/<id>/webhooks/``. Webhooks can be filtered by event
+    category and secured with a shared secret for payload signing.

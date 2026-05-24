@@ -1335,6 +1335,48 @@ class Event(models.Model):
         ordering = ['-date']
 
 
+class Webhook(models.Model):
+    project = models.ForeignKey(
+        Project,
+        related_name='webhooks',
+        on_delete=models.CASCADE,
+    )
+    url = models.URLField(
+        max_length=500,
+        help_text='The URL to send webhook payloads to.',
+    )
+    secret = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Secret used to sign webhook payloads via HMAC-SHA256.',
+    )
+    events = models.CharField(
+        max_length=500,
+        default='*',
+        help_text='Comma-separated list of event categories, or * for all.',
+    )
+    active = models.BooleanField(default=True)
+    creator = models.ForeignKey(
+        User,
+        related_name='+',
+        on_delete=models.CASCADE,
+    )
+    created = models.DateTimeField(default=tz_utils.now)
+
+    def matches_event(self, category):
+        if self.events == '*':
+            return True
+        return category in self.events.split(',')
+
+    def __repr__(self):
+        return "<Webhook id='%d' url='%s'>" % (self.id, self.url)
+
+    class Meta:
+        ordering = ['id']
+        unique_together = [('project', 'url')]
+
+
 class EmailConfirmation(models.Model):
     validity = datetime.timedelta(days=settings.CONFIRMATION_VALIDITY_DAYS)
     type = models.CharField(
