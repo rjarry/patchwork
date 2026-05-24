@@ -972,6 +972,13 @@ class Series(FilenameMixin, models.Model):
 
         return patch
 
+    def is_editable(self, user):
+        if not user.is_authenticated:
+            return False
+        if self.project.is_editable(user):
+            return True
+        return False
+
     def get_absolute_url(self):
         # TODO(stephenfin): We really need a proper series view
         return reverse(
@@ -1011,6 +1018,26 @@ class SeriesReference(models.Model):
 
     class Meta:
         unique_together = [('project', 'msgid')]
+
+
+class SeriesMetadata(models.Model):
+    """A single key-value metadata entry for a series."""
+
+    series = models.ForeignKey(
+        Series,
+        related_name='metadata',
+        related_query_name='metadata_entry',
+        on_delete=models.CASCADE,
+    )
+    key = models.CharField(max_length=255, db_index=True)
+    value = models.TextField(max_length=255, db_index=True)
+
+    def __str__(self):
+        return f'{self.key}={self.value}'
+
+    class Meta:
+        unique_together = [('series', 'key')]
+        ordering = ['key']
 
 
 class Bundle(models.Model):

@@ -165,6 +165,14 @@ class TimestampMixin(BaseFilterSet):
 class SeriesFilterSet(TimestampMixin, BaseFilterSet):
     submitter = PersonFilter(queryset=Person.objects.all(), distinct=False)
     project = ProjectFilter(queryset=Project.objects.all(), distinct=False)
+    metadata_key = CharFilter(
+        field_name='metadata_entry__key',
+        label='Metadata key',
+    )
+    metadata_value = CharFilter(
+        field_name='metadata_entry__value',
+        label='Metadata value',
+    )
 
     class Meta:
         model = Series
