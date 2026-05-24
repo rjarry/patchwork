@@ -197,7 +197,7 @@ class TestSeriesAPI(utils.APITestCase):
             create_cover(series=series_obj)
             create_patch(series=series_obj)
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9):
             self.client.get(self.api_url())
 
     @utils.store_samples('series-detail')
@@ -251,8 +251,8 @@ class TestSeriesAPI(utils.APITestCase):
         with self.assertRaises(NoReverseMatch):
             self.client.get(self.api_url('foo'))
 
-    def test_create_update_delete(self):
-        """Ensure creates, updates and deletes aren't allowed"""
+    def test_create_delete(self):
+        """Ensure creates and deletes aren't allowed."""
         user = create_maintainer()
         user.is_superuser = True
         user.save()
@@ -263,8 +263,36 @@ class TestSeriesAPI(utils.APITestCase):
 
         series = create_series()
 
-        resp = self.client.patch(self.api_url(series.id), {'name': 'Test'})
-        self.assertEqual(status.HTTP_405_METHOD_NOT_ALLOWED, resp.status_code)
-
         resp = self.client.delete(self.api_url(series.id))
         self.assertEqual(status.HTTP_405_METHOD_NOT_ALLOWED, resp.status_code)
+
+    def test_update(self):
+        """Ensure maintainers can update series metadata."""
+        project = create_project()
+        user = create_maintainer(project=project)
+        self.client.authenticate(user=user)
+
+        series = create_series(project=project)
+
+        resp = self.client.patch(
+            self.api_url(series.id),
+            {'metadata': {'github': 'owner/repo#42'}},
+            validate_request=False,
+            validate_response=False,
+        )
+        self.assertEqual(status.HTTP_200_OK, resp.status_code)
+        self.assertEqual({'github': 'owner/repo#42'}, resp.data['metadata'])
+
+    def test_update_non_maintainer(self):
+        """Ensure non-maintainers cannot update series."""
+        series = create_series()
+        user = create_user()
+        self.client.authenticate(user=user)
+
+        resp = self.client.patch(
+            self.api_url(series.id),
+            {'metadata': {'test': 'value'}},
+            validate_request=False,
+            validate_response=False,
+        )
+        self.assertEqual(status.HTTP_403_FORBIDDEN, resp.status_code)

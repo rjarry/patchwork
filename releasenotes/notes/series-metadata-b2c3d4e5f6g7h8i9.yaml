@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Series can now have arbitrary key-value metadata attached for external
+    integrations. Each metadata entry is stored as a separate row allowing
+    efficient querying and indexing. The patch detail page displays
+    metadata inline with URL values rendered as clickable links.
+api:
+  - |
+    Add ``metadata`` field to the series endpoint (v1.5). Metadata is
+    presented as a JSON object. Maintainers can update metadata via
+    PATCH, setting a key to null deletes it.
+  - |
+    Add ``metadata_key`` and ``metadata_value`` query filters to the
+    series list endpoint for filtering by metadata entries.

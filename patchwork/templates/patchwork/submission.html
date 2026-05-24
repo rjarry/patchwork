@@ -97,6 +97,16 @@
     </td>
   </tr>
 {% endif %}
+{% if submission.series.metadata.all %}
+  <tr>
+    <th>Metadata</th>
+    <td>
+{% for entry in submission.series.metadata.all %}
+      <strong>{{ entry.key }}:</strong> {{ entry.value|metadata_value }}{% if not forloop.last %} | {% endif %}
+{% endfor %}
+    </td>
+  </tr>
+{% endif %}
 {% if submission.related %}
   <tr>
     <th>Related</th>

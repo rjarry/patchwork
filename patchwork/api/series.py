@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from rest_framework.generics import ListAPIView
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.serializers import (
     SerializerMethodField,
     HyperlinkedRelatedField,
@@ -18,6 +18,7 @@ from patchwork.api.embedded import PatchSerializer
 from patchwork.api.embedded import PersonSerializer
 from patchwork.api.embedded import ProjectSerializer
 from patchwork.models import Series
+from patchwork.models import SeriesMetadata
 
 
 class SeriesSerializer(BaseHyperlinkedModelSerializer):
@@ -33,6 +34,7 @@ class SeriesSerializer(BaseHyperlinkedModelSerializer):
     dependents = HyperlinkedRelatedField(
         read_only=True, view_name='api-series-detail', many=True
     )
+    metadata = SerializerMethodField()
 
     def get_web_url(self, instance):
         request = self.context.get('request')
@@ -42,15 +44,39 @@ class SeriesSerializer(BaseHyperlinkedModelSerializer):
         request = self.context.get('request')
         return request.build_absolute_uri(instance.get_mbox_url())
 
+    def get_metadata(self, instance):
+        return {m.key: m.value for m in instance.metadata.all()}
+
     def to_representation(self, instance):
         if not instance.project.show_dependencies:
             for field in ('dependencies', 'dependents'):
                 if field in self.fields:
                     del self.fields[field]
 
-        data = super().to_representation(instance)
+        return super().to_representation(instance)
 
-        return data
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'metadata' in data:
+            ret['metadata'] = data['metadata']
+        return ret
+
+    def update(self, instance, validated_data):
+        metadata = validated_data.pop('metadata', None)
+        instance = super().update(instance, validated_data)
+        if metadata is not None:
+            for key, value in metadata.items():
+                if value is None:
+                    SeriesMetadata.objects.filter(
+                        series=instance, key=key
+                    ).delete()
+                else:
+                    SeriesMetadata.objects.update_or_create(
+                        series=instance,
+                        key=key,
+                        defaults={'value': str(value)},
+                    )
+        return instance
 
     class Meta:
         model = Series
@@ -71,6 +97,7 @@ class SeriesSerializer(BaseHyperlinkedModelSerializer):
             'patches',
             'dependencies',
             'dependents',
+            'metadata',
         )
         read_only_fields = (
             'date',
@@ -87,6 +114,7 @@ class SeriesSerializer(BaseHyperlinkedModelSerializer):
         versioned_fields = {
             '1.1': ('web_url',),
             '1.4': ('dependencies', 'dependents'),
+            '1.5': ('metadata',),
         }
         extra_kwargs = {
             'url': {'view_name': 'api-series-detail'},
@@ -105,6 +133,7 @@ class SeriesMixin(object):
                 'cover_letter__project',
                 'dependencies',
                 'dependents',
+                'metadata',
             )
             .select_related('submitter', 'project')
         )
@@ -119,7 +148,16 @@ class SeriesList(SeriesMixin, ListAPIView):
     ordering = 'id'
 
 
-class SeriesDetail(SeriesMixin, RetrieveAPIView):
-    """Show a series."""
+class SeriesDetail(SeriesMixin, RetrieveUpdateAPIView):
+    """
+    get:
+    Show a series.
+
+    patch:
+    Update a series.
+
+    put:
+    Update a series.
+    """
 
     pass
