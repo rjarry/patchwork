@@ -6,6 +6,7 @@
 import codecs
 import datetime
 from datetime import timezone
+from difflib import SequenceMatcher
 from email.header import decode_header
 from email.header import make_header
 from email.utils import mktime_tz
@@ -333,6 +334,126 @@ def find_series(project, mail, author):
         return series
 
     return _find_series_by_markers(project, mail, author)
+
+
+def _strip_name_prefixes(name):
+    """Strip leading bracketed prefixes from a series or patch name."""
+    if not name:
+        return ''
+    prefix_re = re.compile(r'^\[([^\]]*)\]\s*')
+    return prefix_re.sub('', name).strip()
+
+
+def _name_similarity(a, b):
+    """Return similarity ratio between two stripped names."""
+    a = _strip_name_prefixes(a)
+    b = _strip_name_prefixes(b)
+    if not a or not b:
+        return 0.0
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
+def _find_version_in_chain(series, target_version):
+    """Walk a series' version chain to find a specific version."""
+    # walk backward
+    current = series
+    while current:
+        if current.version == target_version:
+            return current
+        current = current.previous_series
+
+    # walk forward
+    current = series
+    while current:
+        if current.version == target_version:
+            return current
+        nxt = current.next_series.order_by('version').first()
+        if nxt and nxt.id != current.id:
+            current = nxt
+        else:
+            break
+
+    return None
+
+
+def find_previous_series(project, series, refs):
+    """Find the previous version of a series for respin tracking.
+
+    Uses a two-tier heuristic: first check mail references for a
+    direct threading link to a related series, then fall back to
+    name and patch subject similarity matching.
+    """
+    if series.version <= 1:
+        return None
+
+    prev_version = series.version - 1
+
+    # tier 1: check In-Reply-To / References for a link to any
+    # version of the same series from the same submitter, then walk
+    # the version chain to find version N-1
+    for ref in refs:
+        try:
+            sr = SeriesReference.objects.get(msgid=ref[:255], project=project)
+        except SeriesReference.DoesNotExist:
+            continue
+        linked = sr.series
+        if linked.id == series.id:
+            continue
+        if linked.submitter != series.submitter:
+            continue
+        if linked.version >= series.version:
+            continue
+        prev = _find_version_in_chain(linked, prev_version)
+        if prev:
+            return prev
+
+    # tier 2: name + submitter matching
+    candidates = Series.objects.filter(
+        project=project,
+        submitter=series.submitter,
+        version=prev_version,
+    ).order_by('-date')
+
+    if not candidates.exists():
+        return None
+
+    best = None
+    best_score = 0.0
+
+    for candidate in candidates:
+        score = _name_similarity(series.name, candidate.name)
+
+        # also check individual patch subjects for multi-patch series
+        new_patches = list(series.patches.values_list('name', flat=True))
+        if new_patches:
+            old_patches = list(
+                candidate.patches.values_list('name', flat=True)
+            )
+            if old_patches:
+                matches = 0
+                for np in new_patches:
+                    for op in old_patches:
+                        if _name_similarity(np, op) >= 0.8:
+                            matches += 1
+                            break
+                patch_ratio = matches / len(new_patches)
+                score = max(score, patch_ratio)
+
+        if score >= 0.8 and score > best_score:
+            best = candidate
+            best_score = score
+
+    return best
+
+
+def _mark_previous_as_superseded(series):
+    """Mark all patches in a series as superseded."""
+    try:
+        superseded = State.objects.get(slug='superseded')
+    except State.DoesNotExist:
+        logger.warning('No "superseded" state found, skipping auto-supersede')
+        return
+    series.patches.update(state=superseded)
 
 
 def split_from_header(from_header):
@@ -1389,6 +1510,15 @@ def parse_mail(mail, list_id=None):
         # parse patch dependencies
         series.add_dependencies(parse_depends_on(message))
 
+        # link to the previous version of this series
+        if not series.previous_series and version > 1:
+            prev = find_previous_series(project, series, refs)
+            if prev:
+                series.previous_series = prev
+                series.save()
+                if project.auto_supersede:
+                    _mark_previous_as_superseded(prev)
+
         return patch
     elif x == 0:  # (potential) cover letters
         # if refs are empty, it's implicitly a cover letter. If not,
@@ -1459,6 +1589,15 @@ def parse_mail(mail, list_id=None):
             # cover letters are permitted to specify dependencies for the
             # entire patch series; parse them
             series.add_dependencies(parse_depends_on(message))
+
+            # link to the previous version of this series
+            if not series.previous_series and version > 1:
+                prev = find_previous_series(project, series, refs)
+                if prev:
+                    series.previous_series = prev
+                    series.save()
+                    if project.auto_supersede:
+                        _mark_previous_as_superseded(prev)
 
             return cover_letter
 

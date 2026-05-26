@@ -33,6 +33,12 @@ class SeriesSerializer(BaseHyperlinkedModelSerializer):
     dependents = HyperlinkedRelatedField(
         read_only=True, view_name='api-series-detail', many=True
     )
+    previous_series = HyperlinkedRelatedField(
+        read_only=True, view_name='api-series-detail'
+    )
+    next_series = HyperlinkedRelatedField(
+        read_only=True, view_name='api-series-detail', many=True
+    )
 
     def get_web_url(self, instance):
         request = self.context.get('request')
@@ -71,6 +77,8 @@ class SeriesSerializer(BaseHyperlinkedModelSerializer):
             'patches',
             'dependencies',
             'dependents',
+            'previous_series',
+            'next_series',
         )
         read_only_fields = (
             'date',
@@ -83,10 +91,17 @@ class SeriesSerializer(BaseHyperlinkedModelSerializer):
             'patches',
             'dependencies',
             'dependents',
+            'previous_series',
+            'next_series',
         )
         versioned_fields = {
             '1.1': ('web_url',),
-            '1.4': ('dependencies', 'dependents'),
+            '1.4': (
+                'dependencies',
+                'dependents',
+                'previous_series',
+                'next_series',
+            ),
         }
         extra_kwargs = {
             'url': {'view_name': 'api-series-detail'},
@@ -105,8 +120,9 @@ class SeriesMixin(object):
                 'cover_letter__project',
                 'dependencies',
                 'dependents',
+                'next_series',
             )
-            .select_related('submitter', 'project')
+            .select_related('submitter', 'project', 'previous_series')
         )
 
 
