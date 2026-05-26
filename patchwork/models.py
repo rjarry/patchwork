@@ -103,6 +103,11 @@ class Project(models.Model):
         default=False,
         help_text='Enable dependency tracking for patches and cover letters.',
     )
+    auto_supersede = models.BooleanField(
+        default=False,
+        help_text='Automatically mark patches of previous series versions '
+        'as superseded when a new version is received.',
+    )
     use_tags = models.BooleanField(default=True)
 
     def is_editable(self, user):
@@ -863,6 +868,15 @@ class Series(FilenameMixin, models.Model):
         related_query_name='dependent',
     )
 
+    # respin tracking
+    previous_series = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='next_series',
+    )
+
     # metadata
     name = models.CharField(
         max_length=255,
@@ -971,6 +985,26 @@ class Series(FilenameMixin, models.Model):
         patch.save()
 
         return patch
+
+    def get_version_chain(self):
+        """Return all versions of this series, oldest first."""
+        chain = [self]
+        current = self
+        while current.previous_series_id:
+            current = current.previous_series
+            chain.append(current)
+        chain.reverse()
+        current = self
+        for newer in current.next_series.order_by('version'):
+            chain.append(newer)
+            # follow further respins from each newer version
+            queue = list(newer.next_series.order_by('version'))
+            while queue:
+                s = queue.pop(0)
+                if s not in chain:
+                    chain.append(s)
+                    queue.extend(s.next_series.order_by('version'))
+        return chain
 
     def is_editable(self, user):
         if not user.is_authenticated:

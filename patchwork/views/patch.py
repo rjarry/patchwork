@@ -124,6 +124,8 @@ def patch_detail(request, project_id, msgid):
     context['project'] = patch.project
     context['related_same_project'] = related_same_project
     context['related_different_project'] = related_different_project
+    if patch.series:
+        context['version_chain'] = patch.series.get_version_chain()
     if errors:
         context['errors'] = errors
 
