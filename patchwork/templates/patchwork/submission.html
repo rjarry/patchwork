@@ -97,6 +97,21 @@
     </td>
   </tr>
 {% endif %}
+{% if version_chain and version_chain|length > 1 %}
+  <tr>
+    <th>Versions</th>
+    <td>
+{% for s in version_chain %}
+{% if s.id == submission.series.id %}
+      <strong>v{{ s.version }}</strong>
+{% else %}
+      <a href="{{ s.get_absolute_url }}">v{{ s.version }}</a>
+{% endif %}
+{% if not forloop.last %} | {% endif %}
+{% endfor %}
+    </td>
+  </tr>
+{% endif %}
 {% if submission.series.metadata.all %}
   <tr>
     <th>Metadata</th>
