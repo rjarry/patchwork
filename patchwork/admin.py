@@ -19,6 +19,7 @@ from patchwork.models import PatchRelation
 from patchwork.models import Person
 from patchwork.models import Project
 from patchwork.models import Series
+from patchwork.models import SeriesMetadata
 from patchwork.models import SeriesReference
 from patchwork.models import State
 from patchwork.models import Tag
@@ -179,6 +180,14 @@ class SeriesReferenceAdmin(admin.ModelAdmin):
 
 
 admin.site.register(SeriesReference, SeriesReferenceAdmin)
+
+
+class SeriesMetadataAdmin(admin.ModelAdmin):
+    model = SeriesMetadata
+    list_display = ('series', 'key', 'value')
+
+
+admin.site.register(SeriesMetadata, SeriesMetadataAdmin)
 
 
 class CheckAdmin(admin.ModelAdmin):
