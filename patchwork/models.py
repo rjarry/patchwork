@@ -168,6 +168,15 @@ class ForgeConfig(models.Model):
         """
         return self.from_email or settings.DEFAULT_FROM_EMAIL
 
+    def clean(self):
+        from patchwork.forge import get_backend
+
+        backend = get_backend(self.backend) if self.backend else None
+        if self.backend and backend is None:
+            raise ValidationError(
+                {'backend': f'Unknown forge backend: {self.backend}'}
+            )
+
     def __str__(self):
         return '%s (%s)' % (self.repo, self.backend)
 

@@ -277,3 +277,29 @@ FORCE_HTTPS_LINKS = False
 
 # Set to True to hide admin details from the about page (/about)
 ADMINS_HIDE = False
+
+# Set to True to enable forge integration (webhook endpoints)
+ENABLE_FORGE = False
+
+# List of forge backend modules to load (e.g. ['patchwork.forge.github'])
+FORGE_BACKENDS = []
+
+# Webhook secrets keyed by backend name (e.g. {'github': 'secret'})
+FORGE_WEBHOOK_SECRETS = {}
+
+# Authentication credentials keyed by backend name. Each backend
+# defines its own auth fields. Per-repo overrides can be specified
+# under a "repos" sub-dict.
+#
+# FORGE_AUTH = {
+#     "github": {
+#         "token": "ghp_default",        # default for all repos
+#         "repos": {
+#             "owner/repo-a": {          # per-repo override
+#                 "app_id": 123456,
+#                 "private_key_file": "/etc/patchwork/repo-a.pem",
+#             },
+#         },
+#     },
+# }
+FORGE_AUTH = {}

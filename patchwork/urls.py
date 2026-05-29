@@ -366,6 +366,15 @@ if settings.ENABLE_REST_API:
     ]
 
 
+if settings.ENABLE_FORGE:
+    from patchwork.forge import load_backends
+
+    load_backends()
+    urlpatterns += [
+        path('webhook/forge/', include('patchwork.forge.urls')),
+    ]
+
+
 # redirect from old urls
 if settings.COMPAT_REDIR:
     urlpatterns += [
