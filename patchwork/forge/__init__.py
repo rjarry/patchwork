@@ -160,6 +160,14 @@ class ForgeBackend(ABC):
         auth.update(repo_overrides)
         return auth
 
+    def git_credentials(self, forge_config):
+        """
+        Return git credential store content as a string for the given
+        project. Written to a temporary file and passed to git via
+        GIT_CREDENTIAL_HELPER during clone and fetch operations.
+        """
+        raise NotImplementedError
+
 
 _backends = {}
 

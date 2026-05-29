@@ -303,3 +303,6 @@ FORGE_WEBHOOK_SECRETS = {}
 #     },
 # }
 FORGE_AUTH = {}
+
+# Base directory for git mirror clones (one bare repo per project)
+FORGE_GIT_MIRROR_PATH = ''
