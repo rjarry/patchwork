@@ -130,6 +130,53 @@ class Project(models.Model):
         ordering = ['linkname']
 
 
+class ForgeConfig(models.Model):
+    project = models.ForeignKey(
+        Project, related_name='forges', on_delete=models.CASCADE
+    )
+    backend = models.CharField(
+        max_length=50,
+        help_text='Forge backend name (e.g. "github").',
+    )
+    repo = models.CharField(
+        max_length=255,
+        help_text='Repository identifier (e.g. "owner/repo").',
+    )
+    from_email = models.CharField(
+        max_length=255,
+        default='',
+        help_text='Sender address for forge-originated emails.',
+    )
+    sync_ml_to_forge = models.BooleanField(
+        default=True,
+        help_text='Create forge PRs from mailing list patch series.',
+    )
+    sync_forge_to_ml = models.BooleanField(
+        default=True,
+        help_text='Send patch emails from forge PRs to the mailing list.',
+    )
+    thread_respins = models.BooleanField(
+        default=False,
+        help_text='Thread respin series as replies to the original version.',
+    )
+
+    @property
+    def sender_email(self):
+        """
+        Return from_email if set, otherwise fall back to
+        DEFAULT_FROM_EMAIL.
+        """
+        return self.from_email or settings.DEFAULT_FROM_EMAIL
+
+    def __str__(self):
+        return '%s (%s)' % (self.repo, self.backend)
+
+    class Meta:
+        verbose_name = 'forge configuration'
+        verbose_name_plural = 'forge configurations'
+        unique_together = [('project', 'backend')]
+
+
 class DelegationRule(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     user = models.ForeignKey(
