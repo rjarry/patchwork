@@ -1310,12 +1310,13 @@ def find_comment_addressed_by_header(mail):
     return False if 'X-Patchwork-Action-Required' in mail else None
 
 
-def parse_mail(mail, list_id=None):
+def parse_mail(mail, list_id=None, ignore_hints=False):
     """Parse a mail and add to the database.
 
     Args:
         mail (`mbox.Mail`): Mail to parse and add.
         list_id (str): Mailing list ID
+        ignore_hint (bool): Ignore X-Patchwork-Hint headers.
 
     Returns:
         patch/cover letter/comment
@@ -1338,7 +1339,7 @@ def parse_mail(mail, list_id=None):
         raise ValueError("Missing 'Message-Id' header")
 
     hint = clean_header(mail.get('X-Patchwork-Hint', ''))
-    if hint and hint.lower() == 'ignore':
+    if hint and hint.lower() == 'ignore' and not ignore_hints:
         logger.info("Ignoring email due to 'ignore' hint")
         return
 
