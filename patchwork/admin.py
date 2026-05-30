@@ -13,6 +13,7 @@ from patchwork.models import Check
 from patchwork.models import Cover
 from patchwork.models import CoverComment
 from patchwork.models import DelegationRule
+from patchwork.models import ForgeConfig
 from patchwork.models import Patch
 from patchwork.models import PatchComment
 from patchwork.models import PatchRelation
@@ -43,12 +44,27 @@ admin.site.register(User, UserAdmin)
 class DelegationRuleInline(admin.TabularInline):
     model = DelegationRule
     fields = ('path', 'user', 'priority')
+    extra = 0
+
+
+class ForgeConfigInline(admin.TabularInline):
+    model = ForgeConfig
+    fields = (
+        'backend',
+        'repo',
+        'from_email',
+        'sync_ml_to_forge',
+        'sync_forge_to_ml',
+        'thread_respins',
+    )
+    extra = 0
 
 
 class ProjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'linkname', 'listid', 'listemail')
     inlines = [
         DelegationRuleInline,
+        ForgeConfigInline,
     ]
 
 
