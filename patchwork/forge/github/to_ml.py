@@ -6,6 +6,10 @@
 import email
 import logging
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils.text import slugify
+
 from patchwork.forge.git import GitMirror
 from patchwork.forge.util import bytes_to_mbox
 from patchwork.forge.util import find_series_by_pr
@@ -15,6 +19,7 @@ from patchwork.forge.util import reply_to_msgid
 from patchwork.forge.util import sanitize_pr_body
 from patchwork.forge.util import send_emails
 from patchwork.forge.util import sender_identity
+from patchwork.models import Check
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +90,51 @@ def handle_review(gh, forge_config, event):
     reply(gh, forge_config, event, series, subject, body.rstrip())
 
 
+def handle_check_pending(gh, forge_config, event):
+    series = find_series_by_pr(gh, forge_config, event.pr_number).last()
+    if not series:
+        return
+
+    create_checks(
+        gh,
+        forge_config,
+        event,
+        event.check_name,
+        Check.STATE_PENDING,
+        event.check_url,
+        '',
+    )
+
+
+def handle_check_result(gh, forge_config, event):
+    series = find_series_by_pr(gh, forge_config, event.pr_number).last()
+    if not series:
+        return
+
+    for run in event.check_runs:
+        create_checks(
+            gh,
+            forge_config,
+            event,
+            run.name,
+            map_check_state(run.status),
+            run.url,
+            run.description,
+        )
+
+    lines = []
+    for run in event.check_runs:
+        line = f'{run.name} {run.status}'
+        if run.url:
+            line += f': {run.url}'
+        lines.append(line)
+
+    subject = (
+        f'Re: {series.name} (GitHub: {event.check_name} {event.check_status})'
+    )
+    reply(gh, forge_config, event, series, subject, '\n'.join(lines))
+
+
 def reply(gh, forge_config, event, series, subject, body):
     """
     Build a reply email as an mbox, ingest it into the database and
@@ -118,3 +168,37 @@ def reply(gh, forge_config, event, series, subject, body):
     mbox = bytes_to_mbox(msg.as_bytes(unixfrom=True))
     ingest_emails(mbox, gh, forge_config, event)
     send_emails(mbox, forge_config)
+
+
+def map_check_state(conclusion):
+    """
+    Map a GitHub check conclusion to a patchwork Check state.
+    """
+    state_map = {
+        'success': Check.STATE_SUCCESS,
+        'failure': Check.STATE_FAIL,
+        'timed_out': Check.STATE_FAIL,
+        'cancelled': Check.STATE_FAIL,
+        'action_required': Check.STATE_WARNING,
+    }
+    return state_map.get(conclusion, Check.STATE_PENDING)
+
+
+@transaction.atomic
+def create_checks(series, forge_config, event, context, state, url, desc):
+    # Use a dedicated 'github' user so that the checks have proper names.
+    user, _ = get_user_model().objects.get_or_create(
+        username='github',
+        defaults={'is_active': False},
+    )
+    for patch in series.patches.all():
+        # New checks are created even when pending ones complete.
+        # The UI will deduplicate and only display the most recent ones.
+        Check.objects.create(
+            patch=patch,
+            user=user,
+            state=state,
+            target_url=url or '',
+            description=desc or '',
+            context=slugify(context),
+        )

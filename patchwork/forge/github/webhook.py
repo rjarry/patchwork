@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from patchwork.forge import CheckRun
 from patchwork.forge import ForgeEvent
 from patchwork.forge import ForgeUser
 from patchwork.forge import ReviewComment
@@ -81,4 +82,54 @@ def parse_review(self, payload):
         body=review.get('body', ''),
         review_state=review.get('state', ''),
         review_comments=comments,
+    )
+
+
+def parse_check_run(payload):
+    if payload.get('action') != 'created':
+        return None
+    run = payload.get('check_run', {})
+    prs = run.get('pull_requests', [])
+    if not prs:
+        return None
+    return ForgeEvent(
+        type='check_pending',
+        repo_key=get_repo_key(payload),
+        pr_number=prs[0].get('number', 0),
+        check_name=run.get('name', ''),
+        check_status='pending',
+        check_url=run.get('html_url', ''),
+    )
+
+
+def parse_check_suite(payload):
+    if payload.get('action') != 'completed':
+        return None
+    suite = payload.get('check_suite', {})
+    prs = suite.get('pull_requests', [])
+    if not prs:
+        return None
+    check_runs = []
+    for run in suite.get('check_runs', []):
+        status = run.get('conclusion') or run.get('status', '')
+        desc = ''
+        output = run.get('output')
+        if output:
+            desc = output.get('summary', '')
+        check_runs.append(
+            CheckRun(
+                name=run.get('name', ''),
+                status=status,
+                url=run.get('html_url', ''),
+                description=desc,
+            )
+        )
+    app = suite.get('app', {})
+    return ForgeEvent(
+        type='check_result',
+        repo_key=get_repo_key(payload),
+        pr_number=prs[0].get('number', 0),
+        check_name=app.get('name', ''),
+        check_status=suite.get('conclusion', ''),
+        check_runs=check_runs,
     )
