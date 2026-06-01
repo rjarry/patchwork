@@ -75,3 +75,38 @@ def parse_review(payload):
         body=review_body,
         review_state=review.get('state', ''),
     )
+
+
+def parse_check_run(payload):
+    if payload.get('action') != 'created':
+        return None
+    run = payload.get('check_run', {})
+    prs = run.get('pull_requests', [])
+    if not prs:
+        return None
+    return ForgeEvent(
+        type='check_pending',
+        repo_key=get_repo_key(payload),
+        pr_number=prs[0].get('number', 0),
+        check_name=run.get('name', ''),
+        check_status='pending',
+        check_url=run.get('html_url', ''),
+    )
+
+
+def parse_check_suite(payload):
+    if payload.get('action') != 'completed':
+        return None
+    suite = payload.get('check_suite', {})
+    prs = suite.get('pull_requests', [])
+    if not prs:
+        return None
+    app = suite.get('app', {})
+    return ForgeEvent(
+        type='check_result',
+        repo_key=get_repo_key(payload),
+        pr_number=prs[0].get('number', 0),
+        check_suite_id=suite.get('id', 0),
+        check_name=app.get('name', ''),
+        check_status=suite.get('conclusion', ''),
+    )
