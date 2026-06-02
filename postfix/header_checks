@@ -1,0 +1,2 @@
+/^From:.*pw@patches\.jarry\.cc/ PREPEND List-Id: <pwforge.jarry.cc>
+/^To:.*pw@patches\.jarry\.cc/ PREPEND List-Id: <pwforge.jarry.cc>
