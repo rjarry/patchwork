@@ -272,3 +272,18 @@ class GitMirror:
 
         result = self.git(*args, capture_output=True)
         return bytes_to_mbox(result.stdout)
+
+    def apply_mbox(self, mbox_text):
+        """
+        Apply patches from an mbox string via git am -3.
+        """
+        if isinstance(mbox_text, str):
+            mbox_text = mbox_text.encode('utf-8')
+        self.git('am', '-3', input=mbox_text)
+
+    def push(self, branch):
+        """
+        Force-push HEAD to refs/heads/<branch> on the remote.
+        """
+        with self.credentials():
+            self.git('push', '-f', self.repo_url, f'HEAD:refs/heads/{branch}')

@@ -94,3 +94,43 @@ def fetch_check_runs(gh, forge_config, check_suite_id):
             )
         )
     return runs
+
+
+def create_pr(gh, forge_config, title, body, head, base):
+    """
+    Create a pull request on GitHub. Return the PR number.
+    """
+    owner, repo = forge_config.repo.split('/', 1)
+    result = gh_api_request(
+        gh,
+        forge_config,
+        'POST',
+        f'/repos/{owner}/{repo}/pulls',
+        {'title': title, 'body': body, 'head': head, 'base': base},
+    )
+    return result['number']
+
+
+def base_branch(gh, forge_config):
+    """
+    Return the default branch of the GitHub repository.
+    """
+    owner, repo = forge_config.repo.split('/', 1)
+    result = gh_api_request(
+        gh,
+        forge_config,
+        'GET',
+        f'/repos/{owner}/{repo}',
+    )
+    return result['default_branch']
+
+
+def post_comment(gh, forge_config, pr_number, body):
+    owner, repo = forge_config.repo.split('/', 1)
+    gh_api_request(
+        gh,
+        forge_config,
+        'POST',
+        f'/repos/{owner}/{repo}/issues/{pr_number}/comments',
+        {'body': body},
+    )
