@@ -14,6 +14,7 @@ import mailbox
 import os
 import re
 
+from django.conf import settings
 from django.core.mail import get_connection
 from django.db import transaction
 
@@ -215,3 +216,64 @@ def send_emails(mbox, forge_config):
             )
             for rcpt, err in errs.items():
                 logger.warning('send patch to %s failed: %s', rcpt, err)
+
+
+TRAILER_RE = re.compile(
+    r'^(Signed-off-by|Acked-by|Reviewed-by|Tested-by|Reported-by'
+    r'|Suggested-by|Co-authored-by|Cc):.*$',
+    re.MULTILINE,
+)
+
+COMMENT_MARKER = '<!-- patchwork -->'
+
+
+def forge_branch_name(series):
+    """
+    Generate a branch name for a series on the forge.
+
+    Format: {prefix}/{hex_id}/{slug}
+    """
+    name = series.name or ''
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    if len(slug) > 50:
+        slug = slug[:50].rstrip('-')
+    return f'{settings.FORGE_BRANCH_PREFIX}/{series.id:x}/{slug}'
+
+
+def build_pr_body(series):
+    """
+    Build a pull request body from a series cover letter or first patch.
+
+    Strips git trailers and appends a patchwork link and loop
+    prevention marker.
+    """
+    if series.cover_letter and series.cover_letter.content:
+        body = series.cover_letter.content.strip()
+    else:
+        patches = list(series.patches.order_by('number')[:1])
+        if patches and patches[0].content:
+            body = patches[0].content.strip()
+        else:
+            body = ''
+
+    body = TRAILER_RE.sub('', body).strip()
+    body += f'\n\n{COMMENT_MARKER}'
+    return body
+
+
+def series_from_forge(series):
+    """
+    Return True if the series originated from a forge sync.
+
+    Checks for X-Patchwork-Hint: ignore in patch headers, which is
+    added by format_patches() when sending forge PRs to the mailing
+    list.
+    """
+    for patch in series.patches.all()[:1]:
+        if not patch.headers:
+            continue
+        parsed = email.message_from_string(patch.headers)
+        hint = parsed.get('X-Patchwork-Hint', '')
+        if hint.lower() == 'ignore':
+            return True
+    return False

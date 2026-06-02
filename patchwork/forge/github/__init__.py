@@ -14,6 +14,7 @@ import logging
 
 from patchwork.forge import ForgeBackend
 from patchwork.forge import register_backend
+from patchwork.forge.github.from_ml import create_or_update_pr
 from patchwork.forge.github.to_ml import handle_check_pending
 from patchwork.forge.github.to_ml import handle_check_result
 from patchwork.forge.github.to_ml import handle_issue_comment
@@ -94,6 +95,9 @@ class GitHubBackend(ForgeBackend):
         handler = handlers.get(event.type)
         if handler:
             handler(forge_config, event)
+
+    def handle_series_completed(self, forge_config, series):
+        create_or_update_pr(self, forge_config, series)
 
 
 register_backend('github', GitHubBackend())
