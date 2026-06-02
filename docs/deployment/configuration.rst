@@ -73,6 +73,13 @@ This is customizable on a per-user basis from the user configuration page.
     This option was previously named ``DEFAULT_PATCHES_PER_PAGE``. It was
     renamed as cover letters are now supported also.
 
+``ENABLE_FORGE``
+~~~~~~~~~~~~~~~~
+
+Enable the :doc:`forge integration <../usage/forge>`. When enabled, webhook
+endpoints are registered and sync signal handlers are active. Requires
+``FORGE_BACKENDS`` to list at least one backend module.
+
 ``ENABLE_REST_API``
 ~~~~~~~~~~~~~~~~~~~
 
@@ -86,6 +93,36 @@ Enable the :doc:`REST API <../api/rest/index>`.
 Enable the :doc:`XML-RPC API <../api/xmlrpc>`.
 
 .. TODO(stephenfin) Deprecate this in favor of SECURE_SSL_REDIRECT
+
+``FORGE_AUTH``
+~~~~~~~~~~~~~~
+
+Authentication credentials for forge backends. See
+:doc:`forge integration <../usage/forge>` for details.
+
+``FORGE_BACKENDS``
+~~~~~~~~~~~~~~~~~~
+
+List of forge backend modules to load. See
+:doc:`forge integration <../usage/forge>` for details.
+
+``FORGE_BRANCH_PREFIX``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Branch prefix for forge-created branches. Used for loop prevention. Default:
+``'patchwork'``. See :doc:`forge integration <../usage/forge>` for details.
+
+``FORGE_GIT_MIRROR_PATH``
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Base directory for bare git mirror clones. See
+:doc:`forge integration <../usage/forge>` for details.
+
+``FORGE_WEBHOOK_SECRETS``
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Webhook signature verification secrets per backend. See
+:doc:`forge integration <../usage/forge>` for details.
 
 ``FORCE_HTTPS_LINKS``
 ~~~~~~~~~~~~~~~~~~~~~

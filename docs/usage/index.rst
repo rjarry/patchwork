@@ -16,4 +16,5 @@ with overviews of specific features.
    /usage/design
    /usage/delegation
    /usage/headers
+   /usage/forge
    /usage/clients
