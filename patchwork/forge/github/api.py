@@ -11,6 +11,7 @@ import urllib.request
 
 from patchwork.forge import CheckRun
 from patchwork.forge import ReviewComment
+from patchwork.forge.util import COMMENT_MARKER
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ def fetch_review_comments(gh, forge_config, pr_number, review_id):
     comments = []
     for r in results:
         body = r.get('body') or ''
-        if body == '':
+        if body == '' or COMMENT_MARKER in body:
             continue
         comments.append(
             ReviewComment(
