@@ -15,6 +15,7 @@ import logging
 from patchwork.forge import ForgeBackend
 from patchwork.forge import register_backend
 from patchwork.forge.github.from_ml import create_or_update_pr
+from patchwork.forge.github.from_ml import post_pr_comment
 from patchwork.forge.github.to_ml import handle_check_pending
 from patchwork.forge.github.to_ml import handle_check_result
 from patchwork.forge.github.to_ml import handle_issue_comment
@@ -98,6 +99,9 @@ class GitHubBackend(ForgeBackend):
 
     def handle_series_completed(self, forge_config, series):
         create_or_update_pr(self, forge_config, series)
+
+    def handle_comment_created(self, forge_config, comment, series):
+        post_pr_comment(self, forge_config, comment, series)
 
 
 register_backend('github', GitHubBackend())

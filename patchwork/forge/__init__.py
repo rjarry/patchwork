@@ -178,6 +178,16 @@ class ForgeBackend(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def handle_comment_created(self, forge_config, comment, series):
+        """
+        Handle a comment on a patch or cover letter.
+
+        Called by the comment-created signal handler. The backend
+        decides whether to forward the comment to the forge PR.
+        """
+        raise NotImplementedError
+
 
 _backends = {}
 
@@ -215,6 +225,43 @@ def _on_series_completed(sender, instance, raw, **kwargs):
             )
 
 
+def _on_comment_created(sender, instance, raw, **kwargs):
+    from patchwork.models import Event
+    from patchwork.models import ForgeConfig
+
+    if raw:
+        return
+
+    if instance.category == Event.CATEGORY_PATCH_COMMENT_CREATED:
+        comment = instance.patch_comment
+        if not comment:
+            return
+        series = comment.patch.series
+    elif instance.category == Event.CATEGORY_COVER_COMMENT_CREATED:
+        comment = instance.cover_comment
+        if not comment:
+            return
+        series = comment.cover.series
+    else:
+        return
+
+    if not series:
+        return
+
+    for forge_config in ForgeConfig.objects.filter(project=series.project):
+        backend = get_backend(forge_config.backend)
+        if not backend:
+            continue
+        try:
+            backend.handle_comment_created(forge_config, comment, series)
+        except Exception:
+            logger.exception(
+                'forge comment sync failed for series %d on %s',
+                series.id,
+                forge_config.backend,
+            )
+
+
 def load_backends():
     from django.db.models.signals import post_save
 
@@ -225,3 +272,4 @@ def load_backends():
         importlib.import_module(module_path)
 
     post_save.connect(_on_series_completed, sender=Event)
+    post_save.connect(_on_comment_created, sender=Event)
