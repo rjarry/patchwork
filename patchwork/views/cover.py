@@ -47,6 +47,9 @@ def cover_detail(request, project_id, msgid):
     comments = comments.only('submitter', 'date', 'id', 'content', 'cover')
     context['comments'] = comments
 
+    if cover.series:
+        context['version_chain'] = cover.series.get_version_chain()
+
     return render(request, 'patchwork/submission.html', context)
 
 

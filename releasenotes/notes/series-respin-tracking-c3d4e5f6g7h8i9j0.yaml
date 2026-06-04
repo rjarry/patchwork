@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Automatic respin tracking for patch series versions. When a new
+    version of a series is received (e.g. [PATCH v3]), patchwork links
+    it to the previous version using In-Reply-To/References headers or
+    name similarity matching. The patch detail page shows all versions
+    with links to navigate between them.
+  - |
+    New per-project ``auto_supersede`` option. When enabled, receiving a
+    new series version automatically marks all patches of the previous
+    version as superseded.
+api:
+  - |
+    Add ``previous_series`` and ``next_series`` fields to the series
+    endpoint (v1.5) for navigating between series versions.
