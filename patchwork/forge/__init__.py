@@ -27,6 +27,10 @@ from dataclasses import dataclass
 from dataclasses import field
 
 from django.conf import settings
+from django.db import transaction
+
+from patchwork.models import Event
+from patchwork.models import ForgeConfig
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +170,16 @@ class ForgeBackend(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def handle_series_completed(self, forge_config, series):
+        """
+        Handle a completed patch series from the mailing list.
+
+        Called by the series-completed signal handler. The backend
+        decides whether to create a pull request from the series.
+        """
+        raise NotImplementedError
+
 
 _backends = {}
 
@@ -178,6 +192,37 @@ def get_backend(name):
     return _backends.get(name)
 
 
+def _on_series_completed(sender, instance, raw, **kwargs):
+    if raw or instance.category != Event.CATEGORY_SERIES_COMPLETED:
+        return
+
+    series = instance.series
+    if not series:
+        return
+
+    def do_sync():
+        for forge_config in ForgeConfig.objects.filter(project=series.project):
+            backend = get_backend(forge_config.backend)
+            if not backend:
+                continue
+            try:
+                backend.handle_series_completed(forge_config, series)
+            except Exception:
+                logger.exception(
+                    'forge sync failed for series %d on %s',
+                    series.id,
+                    forge_config.backend,
+                )
+
+    transaction.on_commit(do_sync)
+
+
 def load_backends():
+    from django.db.models.signals import post_save
+
+    from patchwork.models import Event
+
     for module_path in settings.FORGE_BACKENDS:
         importlib.import_module(module_path)
+
+    post_save.connect(_on_series_completed, sender=Event)

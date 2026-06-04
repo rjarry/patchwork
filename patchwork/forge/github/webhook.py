@@ -3,8 +3,11 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+from django.conf import settings
+
 from patchwork.forge import ForgeEvent
 from patchwork.forge import ForgeUser
+from patchwork.forge.util import COMMENT_MARKER
 
 
 def parse_pull_request(payload):
@@ -13,6 +16,11 @@ def parse_pull_request(payload):
         return None
     pr = payload.get('pull_request', {})
     pr_body = pr.get('body') or ''
+    if COMMENT_MARKER in pr_body:
+        return None
+    branch = pr.get('head', {}).get('ref', '')
+    if branch.startswith(f'{settings.FORGE_BRANCH_PREFIX}/'):
+        return None
     return ForgeEvent(
         type='pull_request',
         repo_key=get_repo_key(payload),
@@ -22,7 +30,7 @@ def parse_pull_request(payload):
         pr_body=pr_body,
         pr_head=f'pull/{pr.get("number", 0)}/head',
         pr_base=pr.get('base', {}).get('sha', ''),
-        pr_head_branch=pr.get('head', {}).get('ref', ''),
+        pr_head_branch=branch,
         pr_action=action,
         pr_before=payload.get('before', ''),
     )
@@ -51,6 +59,8 @@ def parse_issue_comment(payload):
         return None
     comment = payload.get('comment', {})
     comment_body = comment.get('body') or ''
+    if COMMENT_MARKER in comment_body:
+        return None
     return ForgeEvent(
         type='issue_comment',
         repo_key=get_repo_key(payload),
@@ -66,6 +76,8 @@ def parse_review(payload):
     review = payload.get('review', {})
     pr = payload.get('pull_request', {})
     review_body = review.get('body') or ''
+    if COMMENT_MARKER in review_body:
+        return None
     return ForgeEvent(
         type='review',
         repo_key=get_repo_key(payload),
