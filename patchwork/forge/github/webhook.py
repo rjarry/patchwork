@@ -41,3 +41,37 @@ def parse_user(user):
         name=user.get('name', ''),
         email=user.get('email', ''),
     )
+
+
+def parse_issue_comment(payload):
+    if payload.get('action') != 'created':
+        return None
+    issue = payload.get('issue', {})
+    if 'pull_request' not in issue:
+        return None
+    comment = payload.get('comment', {})
+    comment_body = comment.get('body') or ''
+    return ForgeEvent(
+        type='issue_comment',
+        repo_key=get_repo_key(payload),
+        pr_number=issue.get('number', 0),
+        author=parse_user(comment.get('user')),
+        body=comment_body,
+    )
+
+
+def parse_review(payload):
+    if payload.get('action') != 'submitted':
+        return None
+    review = payload.get('review', {})
+    pr = payload.get('pull_request', {})
+    review_body = review.get('body') or ''
+    return ForgeEvent(
+        type='review',
+        repo_key=get_repo_key(payload),
+        pr_number=pr.get('number', 0),
+        review_id=review.get('id', 0),
+        author=parse_user(review.get('user')),
+        body=review_body,
+        review_state=review.get('state', ''),
+    )
