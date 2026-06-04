@@ -4,12 +4,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 
+import email
 import logging
 
 from patchwork.forge.git import GitMirror
 from patchwork.forge.github.api import base_branch
 from patchwork.forge.github.api import create_pr
 from patchwork.forge.github.api import post_comment
+from patchwork.forge.util import COMMENT_MARKER
 from patchwork.forge.util import build_pr_body
 from patchwork.forge.util import forge_branch_name
 from patchwork.forge.util import series_from_forge
@@ -106,3 +108,26 @@ def store_series_metadata(gh, forge_config, series, pr_ref, branch):
         key=f'{forge_config.backend}_branch',
         defaults={'value': branch},
     )
+
+
+def post_pr_comment(gh, forge_config, comment, series):
+    if not forge_config.sync_ml_to_forge:
+        return
+
+    if comment.headers:
+        parsed = email.message_from_string(comment.headers)
+        hint = parsed.get('X-Patchwork-Hint', '')
+        if hint.lower() == 'ignore':
+            return
+
+    pr_meta = SeriesMetadata.objects.filter(
+        series=series, key=gh.meta_key_pr()
+    ).first()
+    if not pr_meta:
+        return
+
+    pr_number = int(pr_meta.value.rsplit('/', 1)[-1])
+    author = comment.submitter.name or comment.submitter.email
+    quoted = '\n'.join(f'> {line}' for line in comment.content.splitlines())
+    body = f'**{author}** commented:\n\n{quoted}\n\n{COMMENT_MARKER}'
+    post_comment(gh, forge_config, pr_number, body)
