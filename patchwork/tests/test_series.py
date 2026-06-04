@@ -1081,3 +1081,42 @@ class SeriesDependencyTestCase(SeriesDependencyBase):
         self.assertEqual(series2.dependencies.count(), 1)
         self.assertEqual(series3.dependencies.count(), 2)
         self.assertEqual(series3.dependents.count(), 0)
+
+
+class SeriesMetadataTest(TestCase):
+    def test_create_metadata(self):
+        series = utils.create_series()
+        meta = models.SeriesMetadata.objects.create(
+            series=series, key='github_pr', value='42'
+        )
+        self.assertEqual(str(meta), 'github_pr=42')
+
+    def test_unique_key_per_series(self):
+        from django.db import IntegrityError
+
+        series = utils.create_series()
+        models.SeriesMetadata.objects.create(
+            series=series, key='github_pr', value='42'
+        )
+        with self.assertRaises(IntegrityError):
+            models.SeriesMetadata.objects.create(
+                series=series, key='github_pr', value='99'
+            )
+
+    def test_lookup_by_key_and_value(self):
+        series = utils.create_series()
+        models.SeriesMetadata.objects.create(
+            series=series, key='github_pr', value='42'
+        )
+        found = models.SeriesMetadata.objects.get(key='github_pr', value='42')
+        self.assertEqual(found.series, series)
+
+    def test_multiple_keys(self):
+        series = utils.create_series()
+        models.SeriesMetadata.objects.create(
+            series=series, key='github_pr', value='42'
+        )
+        models.SeriesMetadata.objects.create(
+            series=series, key='github_branch', value='pwforge/1a2b/fix'
+        )
+        self.assertEqual(series.metadata.count(), 2)
