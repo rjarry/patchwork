@@ -9,6 +9,7 @@ import logging
 import urllib.error
 import urllib.request
 
+from patchwork.forge import CheckRun
 from patchwork.forge import ReviewComment
 
 logger = logging.getLogger(__name__)
@@ -64,3 +65,32 @@ def fetch_review_comments(gh, forge_config, pr_number, review_id):
             )
         )
     return comments
+
+
+def fetch_check_runs(gh, forge_config, check_suite_id):
+    """
+    Fetch check runs for a check suite via the GitHub API.
+    """
+    owner, repo = forge_config.repo.split('/', 1)
+    result = gh_api_request(
+        gh,
+        forge_config,
+        'GET',
+        f'/repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs',
+    )
+    runs = []
+    for run in result.get('check_runs', []):
+        status = run.get('conclusion') or run.get('status', '')
+        desc = ''
+        output = run.get('output')
+        if output:
+            desc = output.get('summary') or ''
+        runs.append(
+            CheckRun(
+                name=run.get('name', ''),
+                status=status,
+                url=run.get('html_url', ''),
+                description=desc,
+            )
+        )
+    return runs

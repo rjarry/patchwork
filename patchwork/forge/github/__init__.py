@@ -14,9 +14,13 @@ import logging
 
 from patchwork.forge import ForgeBackend
 from patchwork.forge import register_backend
+from patchwork.forge.github.to_ml import handle_check_pending
+from patchwork.forge.github.to_ml import handle_check_result
 from patchwork.forge.github.to_ml import handle_issue_comment
 from patchwork.forge.github.to_ml import handle_pull_request
 from patchwork.forge.github.to_ml import handle_review
+from patchwork.forge.github.webhook import parse_check_run
+from patchwork.forge.github.webhook import parse_check_suite
 from patchwork.forge.github.webhook import parse_issue_comment
 from patchwork.forge.github.webhook import parse_pull_request
 from patchwork.forge.github.webhook import parse_review
@@ -44,6 +48,8 @@ class GitHubBackend(ForgeBackend):
         payload = json.loads(body)
 
         parsers = {
+            'check_run': parse_check_run,
+            'check_suite': parse_check_suite,
             'issue_comment': parse_issue_comment,
             'pull_request': parse_pull_request,
             'pull_request_review': parse_review,
@@ -79,6 +85,8 @@ class GitHubBackend(ForgeBackend):
 
     def process_webhook_event(self, forge_config, event):
         handlers = {
+            'check_pending': handle_check_pending,
+            'check_result': handle_check_result,
             'issue_comment': handle_issue_comment,
             'pull_request': handle_pull_request,
             'review': handle_review,
