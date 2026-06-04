@@ -6,11 +6,6 @@
 import email
 import logging
 
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from django.utils.text import slugify
-
-from patchwork.forge import ReviewComment
 from patchwork.forge.git import GitMirror
 from patchwork.forge.github.api import fetch_review_comments
 from patchwork.forge.util import bytes_to_mbox
