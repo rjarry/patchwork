@@ -1,0 +1,17 @@
+# Patchwork configuration file.
+
+syslog = false
+
+[database]
+#url = "postgres://patchwork:patchwork@localhost/patchwork?sslmode=disable"
+#url = "sqlite://patchwork.db"
+#url = "mysql://patchwork:patchwork@localhost/patchwork"
+
+[ingress]
+listen = ":2525"
+max-message-size = 10485760
+max-recipients = 100
+
+[http]
+listen = ":8080"
+base-url = "https://patchwork.example.com"

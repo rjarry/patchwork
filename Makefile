@@ -41,4 +41,18 @@ dbbackup: .state/docker-build
 dbrestore: .state/docker-build
 	$(MANAGE_PY) dbrestore
 
+.PHONY: lint
+lint:
+	@echo '[gofumpt]'
+	@! gofumpt -d . | grep ^diff || { \
+		echo 'error: above files need reformatting'; \
+		exit 1; \
+	}
+	@echo '[govet]'
+	@go vet ./...
+
+.PHONY: format
+format:
+	gofumpt -w .
+
 .PHONY: default build serve tests dbshell shell manage migrate makemigrations dbbackup dbrestore
