@@ -1,4 +1,8 @@
 MANAGE_PY := docker-compose run --rm web python manage.py
+GO ?= go
+SRC ?= $(shell git ls-files '*.go')
+PYTHON ?= python3
+V ?= 0
 
 default:
 	@echo "Call a specific subcommand"
@@ -19,6 +23,7 @@ serve: .state/docker-build
 
 tests: .state/docker-build
 	docker-compose run -e TOXENV=${TOXENV} --rm web tox
+	$(GO) test $(if $(filter 1,$(V)),-v,) ./...
 
 manage: .state/docker-build
 	$(MANAGE_PY) $(CMD)
