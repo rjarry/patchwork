@@ -5,9 +5,10 @@ V ?= 0
 
 default: pw
 
-src = $(shell git ls-files '*.go')
+src = $(shell git ls-files ':!:*_templ.go' '*.go' '*.css' '*.templ')
 
 pw: $(src)
+	$(GO) generate ./...
 	$(GO) build -trimpath -o pw ./cmd/pw
 
 .state/docker-build: docker-compose.yml tools/docker/Dockerfile requirements-dev.txt
