@@ -1,12 +1,14 @@
 MANAGE_PY := docker-compose run --rm web python manage.py
 GO ?= go
-SRC ?= $(shell git ls-files '*.go')
 PYTHON ?= python3
 V ?= 0
 
-default:
-	@echo "Call a specific subcommand"
-	@exit 1
+default: pw
+
+src = $(shell git ls-files '*.go')
+
+pw: $(src)
+	$(GO) build -trimpath -o pw ./cmd/pw
 
 .state/docker-build: docker-compose.yml tools/docker/Dockerfile requirements-dev.txt
 	docker-compose build

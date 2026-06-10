@@ -35,6 +35,9 @@ cscope.*
 # generated go code
 *_templ.go
 
+# compiled go binaries
+/pw
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
