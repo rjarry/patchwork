@@ -32,6 +32,9 @@ cscope.*
 
 *.sql
 
+# generated go code
+*_templ.go
+
 # Unit test / coverage reports
 htmlcov/
 .tox/

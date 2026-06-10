@@ -1,0 +1,213 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+body {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	line-height: 1.42;
+	color: #333;
+	background: #fff;
+}
+a {
+	color: #337ab7;
+	text-decoration: none;
+}
+a:hover {
+	color: #286090;
+	text-decoration: underline;
+}
+code, kbd, pre, samp {
+	font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+code {
+	padding: 2px 4px;
+	font-size: 90%;
+	color: #c7254e;
+	background-color: #f9f2f4;
+	border-radius: 4px;
+}
+pre code {
+	padding: 0;
+	font-size: inherit;
+	color: inherit;
+	background: none;
+	border-radius: 0;
+}
+pre {
+	overflow-x: auto;
+	padding: 0.5em;
+	line-height: 1.4;
+}
+h1 { font-size: 1.5em; margin: 0.5em 0; }
+h2 { font-size: 1.3em; margin: 0.5em 0; }
+
+/* --- navbar --- */
+header nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #222;
+	border-bottom: 1px solid #080808;
+	padding: 1em 2em;
+	font-size: 1.2em;
+}
+header a { color: #9d9d9d; text-decoration: none; }
+header a:hover { color: #fff; text-decoration: none; }
+header b { color: #fff; }
+header span > span { color: #666; margin: 0 3px; }
+header span:last-child a + a { margin-left: 1em; }
+
+/* --- main content --- */
+main {
+	padding: 0.5em 1em;
+}
+
+/* --- filter bar --- */
+patch-count {
+	display: block;
+	color: #777;
+	margin: 0 0 0.3em 0;
+}
+patch-filters {
+	display: block;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 4px 8px;
+	margin: 0 0 0.5em 0;
+}
+patch-filters form {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	align-items: center;
+}
+patch-filters input,
+patch-filters select {
+	padding: 2px 4px;
+	border: 1px solid #909090;
+	font: inherit;
+}
+patch-filters button {
+	padding: 2px 10px;
+	border: 1px solid #909090;
+	background: #f5f5f5;
+	font: inherit;
+	font-weight: bold;
+	cursor: pointer;
+}
+patch-filters button:hover {
+	background: #e8e8e8;
+}
+
+/* --- patch list table --- */
+patch-list { display: block; }
+patch-list table {
+	border-collapse: collapse;
+	width: 100%;
+}
+patch-list th {
+	padding: 3px 1em;
+	border-bottom: 2px solid #ddd;
+	text-align: left;
+}
+patch-list th a { color: #333; }
+patch-list th a:hover { color: #c00; text-decoration: none; }
+patch-list td {
+	padding: 3px 1em;
+	border-top: 1px solid #e8e8e8;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+patch-list td:first-child {
+	white-space: normal;
+	word-break: break-word;
+}
+patch-list tbody tr:nth-child(odd) { background: #f9f9f9; }
+patch-list tbody tr:hover { background: #f0f0f0; }
+
+/* --- checks --- */
+check-ok { color: #82ca9d; }
+check-warn { color: #ffc95e; }
+check-fail { color: #ff5555; }
+
+/* --- download links --- */
+title-bar {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+}
+download-links code {
+	margin-right: 0.5em;
+	color: #999;
+}
+download-links a {
+	margin-left: 0.5em;
+}
+
+/* --- submission detail --- */
+submission-meta {
+	display: block;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 5px 0;
+	margin: 0 0 1em 0;
+}
+submission-meta table { border-collapse: collapse; }
+submission-meta th, submission-meta td {
+	padding: 2px 0.8em;
+	text-align: left;
+	vertical-align: top;
+}
+submission-meta th { white-space: nowrap; }
+
+/* --- comments --- */
+comment-header {
+	display: flex;
+	align-items: center;
+	background: #f0f0f0;
+	padding: 0.3em 0.5em;
+	margin: 0.5em 0 0 0;
+}
+
+/* --- diff --- */
+patch-diff {
+	display: block;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 0;
+}
+patch-diff pre {
+	margin: 0;
+	border: none;
+}
+patch-diff pre span.diff-head { font-weight: bold; }
+patch-diff pre span.diff-hunk { color: #329fb0; font-weight: bold; }
+patch-diff pre span.diff-add { color: #1b9d09; background: #edffed; }
+patch-diff pre span.diff-del { color: #c80101; background: #ffe2e2; }
+
+/* --- pagination --- */
+main nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	margin: 0.5em 0;
+}
+main nav a, main nav span {
+	padding: 0.2em 0.5em;
+}
+main nav span {
+	background: #eee;
+	border-radius: 3px;
+	color: #999;
+}
+
+/* --- footer --- */
+footer {
+	text-align: center;
+	font-size: small;
+	color: #909090;
+	padding: 1em;
+}

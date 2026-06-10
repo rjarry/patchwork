@@ -1,0 +1,47 @@
+package web
+
+type breadcrumb struct {
+	Label string
+	URL   string
+}
+
+templ layout(title string, projectLinkname string, crumbs []breadcrumb) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } - Patchwork</title>
+			<link rel="stylesheet" href="/static/style.css"/>
+		</head>
+		<body>
+			<header>
+				<nav>
+					<span>
+						<a href="/"><b>Patchwork</b></a>
+						for _, c := range crumbs {
+							<span>/</span>
+							if c.URL != "" {
+								<a href={ templ.SafeURL(c.URL) }>{ c.Label }</a>
+							} else {
+								<span>{ c.Label }</span>
+							}
+						}
+					</span>
+					if projectLinkname != "" {
+						<span>
+							<a href={ templ.SafeURL("/project/" + projectLinkname + "/list/") }>Patches</a>
+							<a href={ templ.SafeURL("/project/" + projectLinkname + "/") }>About this project</a>
+						</span>
+					}
+				</nav>
+			</header>
+			<main>
+				{ children... }
+			</main>
+			<footer>
+				Patchwork
+			</footer>
+		</body>
+	</html>
+}
