@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 
+	"github.com/getpatchwork/patchwork/cmd/pw/admin"
 	"github.com/getpatchwork/patchwork/cmd/pw/http"
 	"github.com/getpatchwork/patchwork/cmd/pw/ingress"
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
@@ -19,6 +20,7 @@ import (
 type CLI struct {
 	config.Config
 
+	Admin   admin.CLI   `cmd:"" help:"Administration CLI."`
 	Ingress ingress.CLI `cmd:"" help:"Ingress SMTP/LMTP daemon."`
 	Http    http.CLI    `cmd:"" help:"HTTP server daemon."`
 }

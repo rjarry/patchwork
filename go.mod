@@ -17,6 +17,7 @@ require (
 	github.com/uptrace/bun/dialect/pgdialect v1.2.18
 	github.com/uptrace/bun/dialect/sqlitedialect v1.2.18
 	golang.org/x/crypto v0.53.0
+	golang.org/x/term v0.44.0
 	modernc.org/sqlite v1.52.0
 )
 
