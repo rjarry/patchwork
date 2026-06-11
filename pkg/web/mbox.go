@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -195,7 +196,9 @@ func formatAddr(name, email string) string {
 	return fmt.Sprintf("%s <%s>", name, email)
 }
 
-func (h *webHandler) patchMbox(w http.ResponseWriter, r *http.Request, linkname, rawMsgid string) {
+func (h *webHandler) patchMboxPage(w http.ResponseWriter, r *http.Request) {
+	linkname := chi.URLParam(r, "linkname")
+	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
 	ctx := r.Context()
 	msgid := "<" + rawMsgid + ">"
 
@@ -237,7 +240,9 @@ func (h *webHandler) servePatchMbox(w http.ResponseWriter, patch db.Patch, proje
 	w.Write([]byte(mbox))
 }
 
-func (h *webHandler) coverMbox(w http.ResponseWriter, r *http.Request, linkname, rawMsgid string) {
+func (h *webHandler) coverMboxPage(w http.ResponseWriter, r *http.Request) {
+	linkname := chi.URLParam(r, "linkname")
+	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
 	ctx := r.Context()
 	msgid := "<" + rawMsgid + ">"
 
@@ -465,10 +470,11 @@ func (h *webHandler) commentRedirect(w http.ResponseWriter, r *http.Request) {
 	notFoundPage(w)
 }
 
-func (h *webHandler) buildMboxSubmission(ctx context.Context, patchID int32, date time.Time,
+func (h *webHandler) buildMboxSubmission(
+	ctx context.Context, patchID int32, date time.Time,
 	content, diff, headers string, submitterID int32, delegateID *int32,
-	listEmail string, isPatch bool) mboxSubmission {
-
+	listEmail string, isPatch bool,
+) mboxSubmission {
 	sub := mboxSubmission{
 		ID:        patchID,
 		Date:      date,

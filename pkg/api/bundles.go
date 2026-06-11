@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -104,7 +104,7 @@ func (h *handler) createBundle(w http.ResponseWriter, r *http.Request) {
 		Name:      body.Name,
 		Public:    body.Public,
 	}
-	if _, err := h.db.NewInsert().Model(&bundle).Exec(ctx); err != nil {
+	if err := db.Insert(ctx, h.db, &bundle); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{
 			"detail": "Create failed.",
 		})
@@ -265,7 +265,7 @@ func insertBundlePatches(ctx context.Context, database *bun.DB, bundleID int32, 
 			PatchID:  pid,
 			Order:    int32(i),
 		}
-		database.NewInsert().Model(&bp).Exec(ctx)
+		db.Insert(ctx, database, &bp)
 	}
 }
 

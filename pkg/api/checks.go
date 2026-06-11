@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -101,7 +101,7 @@ func (h *handler) createCheck(w http.ResponseWriter, r *http.Request) {
 		Context:     body.Context,
 		Description: body.Description,
 	}
-	_, err := h.db.NewInsert().Model(&check).Exec(ctx)
+	err := db.Insert(ctx, h.db, &check)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"detail": "Create failed.",

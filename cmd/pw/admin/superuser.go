@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -95,7 +95,7 @@ func (c *SuperuserCreateCmd) Run(ctx *pw.Context) error {
 		IsActive:    true,
 		DateJoined:  time.Now(),
 	}
-	_, err = ctx.DB.NewInsert().Model(&user).Exec(ctx)
+	err = db.Insert(ctx, ctx.DB, &user)
 	if err != nil {
 		return err
 	}

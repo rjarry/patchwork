@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -24,7 +24,7 @@ import (
 type CLI struct{}
 
 func (c *CLI) Run(ctx *pw.Context) error {
-	router := web.NewRouter(ctx.DB)
+	router := web.NewRouter(ctx.Config, ctx.DB)
 	router.Mount("/", api.NewRouter(ctx.DB))
 
 	srv := &http.Server{

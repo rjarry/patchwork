@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -18,6 +18,7 @@ import (
 func NewRouter(database *bun.DB) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.StripSlashes)
 	r.Use(middleware.SetHeader("Content-Type", "application/json"))
 
 	h := &handler{db: database}
@@ -26,55 +27,55 @@ func NewRouter(database *bun.DB) chi.Router {
 	mount := func(r chi.Router) {
 		r.Get("/", h.index)
 
-		r.Get("/users/", h.listUsers)
+		r.Get("/users", h.listUsers)
 		r.Get("/users/{id}", h.getUser)
 		r.Patch("/users/{id}", h.updateUser)
 
-		r.Get("/projects/", h.listProjects)
+		r.Get("/projects", h.listProjects)
 		r.Get("/projects/{pk}", h.getProject)
 		r.Patch("/projects/{pk}", h.updateProject)
-		r.Get("/projects/{projectID}/webhooks/", h.listWebhooks)
-		r.Post("/projects/{projectID}/webhooks/", h.createWebhook)
+		r.Get("/projects/{projectID}/webhooks", h.listWebhooks)
+		r.Post("/projects/{projectID}/webhooks", h.createWebhook)
 		r.Get("/projects/{projectID}/webhooks/{webhookID}", h.getWebhook)
 		r.Patch("/projects/{projectID}/webhooks/{webhookID}", h.updateWebhook)
 		r.Delete("/projects/{projectID}/webhooks/{webhookID}", h.deleteWebhook)
 
-		r.Get("/patches/", h.listPatches)
+		r.Get("/patches", h.listPatches)
 		r.Get("/patches/{id}", h.getPatch)
 		r.Patch("/patches/{id}", h.updatePatch)
 		r.Put("/patches/{id}", h.updatePatch)
-		r.Get("/patches/{id}/checks/", h.listChecks)
-		r.Post("/patches/{id}/checks/", h.createCheck)
+		r.Get("/patches/{id}/checks", h.listChecks)
+		r.Post("/patches/{id}/checks", h.createCheck)
 		r.Get("/patches/{id}/checks/{checkID}", h.getCheck)
-		r.Get("/patches/{id}/comments/", h.listPatchComments)
+		r.Get("/patches/{id}/comments", h.listPatchComments)
 		r.Get("/patches/{id}/comments/{commentID}", h.getPatchComment)
 		r.Patch("/patches/{id}/comments/{commentID}", h.updatePatchComment)
 
-		r.Get("/covers/", h.listCovers)
+		r.Get("/covers", h.listCovers)
 		r.Get("/covers/{id}", h.getCover)
-		r.Get("/covers/{id}/comments/", h.listCoverComments)
+		r.Get("/covers/{id}/comments", h.listCoverComments)
 		r.Get("/covers/{id}/comments/{commentID}", h.getCoverComment)
 		r.Patch("/covers/{id}/comments/{commentID}", h.updateCoverComment)
 
-		r.Get("/series/", h.listSeries)
+		r.Get("/series", h.listSeries)
 		r.Get("/series/{id}", h.getSeries)
 		r.Patch("/series/{id}", h.updateSeries)
 
-		r.Get("/people/", h.listPeople)
+		r.Get("/people", h.listPeople)
 		r.Get("/people/{id}", h.getPerson)
 
-		r.Get("/events/", h.listEvents)
+		r.Get("/events", h.listEvents)
 
-		r.Get("/bundles/", h.listBundles)
-		r.Post("/bundles/", h.createBundle)
+		r.Get("/bundles", h.listBundles)
+		r.Post("/bundles", h.createBundle)
 		r.Get("/bundles/{id}", h.getBundle)
 		r.Patch("/bundles/{id}", h.updateBundle)
 		r.Put("/bundles/{id}", h.updateBundle)
 		r.Delete("/bundles/{id}", h.deleteBundle)
 	}
 
-	r.Route("/api/", func(r chi.Router) {
-		r.Route("/1.5/", mount)
+	r.Route("/api", func(r chi.Router) {
+		r.Route("/1.5", mount)
 		r.Group(mount)
 	})
 

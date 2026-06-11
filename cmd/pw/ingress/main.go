@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -106,15 +106,15 @@ func (c *CLI) Run(ctx *pw.Context) error {
 
 func startSMTPServer(cfg *config.Config, be smtp.Backend) (net.Listener, *smtp.Server, error) {
 	s := smtp.NewServer(be)
-	s.Addr = cfg.SMTPD.Listen
+	s.Addr = cfg.Ingress.Listen
 	s.Domain = "localhost"
 	s.ReadTimeout = 30 * time.Second
 	s.WriteTimeout = 30 * time.Second
-	s.MaxMessageBytes = int64(cfg.SMTPD.MaxMessageSize)
-	s.MaxRecipients = cfg.SMTPD.MaxRecipients
+	s.MaxMessageBytes = int64(cfg.Ingress.MaxMessageSize)
+	s.MaxRecipients = cfg.Ingress.MaxRecipients
 	s.AllowInsecureAuth = true
 	s.EnableSMTPUTF8 = true
-	s.LMTP = strings.Contains(cfg.SMTPD.Listen, "/")
+	s.LMTP = strings.Contains(cfg.Ingress.Listen, "/")
 	s.ErrorLog = log.ErrLogger()
 
 	network := "tcp"
@@ -167,7 +167,7 @@ func (s *session) Rcpt(to string, opts *smtp.RcptOptions) error {
 }
 
 func (s *session) Data(r io.Reader) error {
-	maxSize := int64(s.backend.cfg.SMTPD.MaxMessageSize)
+	maxSize := int64(s.backend.cfg.Ingress.MaxMessageSize)
 
 	var buf bytes.Buffer
 	n, err := io.CopyN(&buf, r, maxSize)

@@ -1,11 +1,23 @@
+// Patchwork - automated patch tracking system
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 package web
+
+import "github.com/getpatchwork/patchwork/pkg/db"
 
 type breadcrumb struct {
 	Label string
 	URL   string
 }
 
-templ layout(title string, projectLinkname string, crumbs []breadcrumb) {
+type pageContext struct {
+	User      *db.User
+	CSRFToken string
+}
+
+templ layout(title string, crumbs []breadcrumb, pc pageContext) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -17,23 +29,31 @@ templ layout(title string, projectLinkname string, crumbs []breadcrumb) {
 		<body>
 			<header>
 				<nav>
-					<span>
-						<a href="/"><b>Patchwork</b></a>
+					<ul>
+						<li><a href="/">Patchwork</a></li>
 						for _, c := range crumbs {
-							<span>/</span>
-							if c.URL != "" {
-								<a href={ templ.SafeURL(c.URL) }>{ c.Label }</a>
-							} else {
-								<span>{ c.Label }</span>
-							}
+							<li>
+								if c.URL != "" {
+									<a href={ templ.SafeURL(c.URL) }>{ c.Label }</a>
+								} else {
+									<span>{ c.Label }</span>
+								}
+							</li>
+						}
+					</ul>
+					<span>
+						if pc.User != nil {
+							<a href="/user/bundles/">Bundles</a>
+							<a href="/user/">{ pc.User.Username }</a>
+							<form method="post" action="/user/logout/">
+								<input type="hidden" name="csrftoken" value={ pc.CSRFToken }/>
+								<button type="submit">Logout</button>
+							</form>
+						} else {
+							<a href="/user/login/">Login</a>
+							<a href="/register/">Register</a>
 						}
 					</span>
-					if projectLinkname != "" {
-						<span>
-							<a href={ templ.SafeURL("/project/" + projectLinkname + "/list/") }>Patches</a>
-							<a href={ templ.SafeURL("/project/" + projectLinkname + "/") }>About this project</a>
-						</span>
-					}
 				</nav>
 			</header>
 			<main>

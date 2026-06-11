@@ -1,14 +1,19 @@
+// Patchwork - automated patch tracking system
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 package web
 
 import "github.com/getpatchwork/patchwork/pkg/db"
 
-templ projectListPage(projects []db.Project) {
-	@layout("Projects", "", nil) {
+templ projectListPage(pc pageContext, projects []db.Project) {
+	@layout("Projects", nil, pc) {
 		<h1>Projects</h1>
 		if len(projects) == 0 {
 			<p>No projects found.</p>
 		} else {
-			<div class="grid">
+			<div>
 				for _, p := range projects {
 					<article>
 						<header>
@@ -31,62 +36,64 @@ templ projectListPage(projects []db.Project) {
 	}
 }
 
-templ projectDetailPage(project db.Project, maintainers []db.User, nPatches int) {
-	@layout(project.Name, project.Linkname, []breadcrumb{
+templ projectDetailPage(pc pageContext, project db.Project, maintainers []db.User, nPatches int) {
+	@layout(project.Name, []breadcrumb{
 		{Label: project.Name},
-	}) {
-		<table class="submission-meta" role="grid">
-			<tbody>
-				<tr>
-					<th>List address</th>
-					<td>{ project.Listemail }</td>
-				</tr>
-				if project.ListArchiveURL != "" {
+	}, pc) {
+		<submission-meta>
+			<table>
+				<tbody>
 					<tr>
-						<th>List archive</th>
-						<td><a href={ templ.SafeURL(project.ListArchiveURL) }>{ project.ListArchiveURL }</a></td>
+						<th>List address</th>
+						<td>{ project.Listemail }</td>
 					</tr>
-				}
-				if project.WebURL != "" {
+					if project.ListArchiveURL != "" {
+						<tr>
+							<th>List archive</th>
+							<td><a href={ templ.SafeURL(project.ListArchiveURL) }>{ project.ListArchiveURL }</a></td>
+						</tr>
+					}
+					if project.WebURL != "" {
+						<tr>
+							<th>Website</th>
+							<td><a href={ templ.SafeURL(project.WebURL) }>{ project.WebURL }</a></td>
+						</tr>
+					}
+					if project.ScmURL != "" {
+						<tr>
+							<th>SCM</th>
+							<td>{ project.ScmURL }</td>
+						</tr>
+					}
+					if project.WebScmURL != "" {
+						<tr>
+							<th>Web SCM</th>
+							<td><a href={ templ.SafeURL(project.WebScmURL) }>{ project.WebScmURL }</a></td>
+						</tr>
+					}
 					<tr>
-						<th>Website</th>
-						<td><a href={ templ.SafeURL(project.WebURL) }>{ project.WebURL }</a></td>
-					</tr>
-				}
-				if project.ScmURL != "" {
-					<tr>
-						<th>SCM</th>
-						<td>{ project.ScmURL }</td>
-					</tr>
-				}
-				if project.WebScmURL != "" {
-					<tr>
-						<th>Web SCM</th>
-						<td><a href={ templ.SafeURL(project.WebScmURL) }>{ project.WebScmURL }</a></td>
-					</tr>
-				}
-				<tr>
-					<th>Patches</th>
-					<td>
-						<a href={ templ.SafeURL("/project/" + project.Linkname + "/list/") }>
-							{ intStr(nPatches) }
-						</a>
-					</td>
-				</tr>
-				if len(maintainers) > 0 {
-					<tr>
-						<th>Maintainers</th>
+						<th>Patches</th>
 						<td>
-							for i, m := range maintainers {
-								if i > 0 {
-									{ ", " }
-								}
-								{ m.FirstName } { m.LastName }
-							}
+							<a href={ templ.SafeURL("/project/" + project.Linkname + "/list/") }>
+								{ intStr(nPatches) }
+							</a>
 						</td>
 					</tr>
-				}
-			</tbody>
-		</table>
+					if len(maintainers) > 0 {
+						<tr>
+							<th>Maintainers</th>
+							<td>
+								for i, m := range maintainers {
+									if i > 0 {
+										{ ", " }
+									}
+									{ m.FirstName } { m.LastName }
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</submission-meta>
 	}
 }

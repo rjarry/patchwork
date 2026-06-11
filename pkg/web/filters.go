@@ -1,11 +1,12 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
-func applyWebFilters(q *bun.SelectQuery, params url.Values, basePath string) (*bun.SelectQuery, []appliedFilter) {
+func applyWebFilters(ctx context.Context, database *bun.DB, q *bun.SelectQuery, params url.Values, basePath string) (*bun.SelectQuery, []appliedFilter) {
 	var filters []appliedFilter
 
 	if v := params.Get("q"); v != "" {
@@ -26,22 +27,29 @@ func applyWebFilters(q *bun.SelectQuery, params url.Values, basePath string) (*b
 		})
 	}
 
-	if v := params.Get("state"); v != "" {
-		if v == "*" {
-			q = q.Where("state_id IN (SELECT id FROM patchwork_state WHERE action_required = ?)", true)
-			filters = append(filters, appliedFilter{
-				Label:     "State",
-				Value:     "Action required",
-				RemoveURL: removeParam(basePath, params, "state"),
-			})
-		} else if id, err := strconv.Atoi(v); err == nil {
-			q = q.Where("state_id = ?", id)
-			filters = append(filters, appliedFilter{
-				Label:     "State",
-				Value:     v,
-				RemoveURL: removeParam(basePath, params, "state"),
-			})
-		}
+	state := params.Get("state")
+	if state == "" {
+		state = "*"
+	}
+	if state == "*" {
+		q = q.Where("state_id IN (SELECT id FROM patchwork_state WHERE action_required = ?)", true)
+		filters = append(filters, appliedFilter{
+			Label:     "State",
+			Value:     "Action required",
+			RemoveURL: removeParam(basePath, params, "state"),
+		})
+	} else if state == "all" {
+		// no filter
+	} else if id, err := strconv.Atoi(state); err == nil {
+		q = q.Where("state_id = ?", id)
+		name := state
+		database.NewRaw(`SELECT name FROM patchwork_state WHERE id = ?`, id).
+			Scan(ctx, &name)
+		filters = append(filters, appliedFilter{
+			Label:     "State",
+			Value:     name,
+			RemoveURL: removeParam(basePath, params, "state"),
+		})
 	}
 
 	archive := params.Get("archive")

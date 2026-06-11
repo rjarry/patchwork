@@ -3,7 +3,7 @@
 syslog = false
 
 [database]
-#url = "postgres://patchwork:patchwork@localhost/patchwork?sslmode=disable"
+url = "postgres://patchwork:patchwork@localhost/patchwork?sslmode=disable"
 #url = "sqlite://patchwork.db"
 #url = "mysql://patchwork:patchwork@localhost/patchwork"
 
@@ -15,3 +15,12 @@ max-recipients = 100
 [http]
 listen = ":8080"
 base-url = "https://patchwork.example.com"
+secret-key = "replace with the output of pw admin secret-key"
+
+[smtp]
+#encryption = "none"
+host = "localhost"
+port = 25
+#user = ""
+#password = ""
+from = "Patchwork <patchwork@example.com>"

@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -47,7 +47,7 @@ func (h *webHandler) patchList(w http.ResponseWriter, r *http.Request) {
 	var filters []appliedFilter
 	baseQuery := fmt.Sprintf("/project/%s/list/", linkname)
 
-	q, filters = applyWebFilters(q, params, baseQuery)
+	q, filters = applyWebFilters(ctx, h.db, q, params, baseQuery)
 
 	sort := params.Get("order")
 	if sort == "" {
@@ -62,7 +62,7 @@ func (h *webHandler) patchList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var patches []db.Patch
-	q.Offset((page - 1) * perPage).Limit(perPage).Scan(ctx, &patches)
+	q.Offset((page-1)*perPage).Limit(perPage).Scan(ctx, &patches)
 
 	populateWebPatches(ctx, h.db, patches)
 
@@ -111,7 +111,31 @@ func (h *webHandler) patchList(w http.ResponseWriter, r *http.Request) {
 		bq = "?" + qp.Encode()
 	}
 
+	var states []db.State
+	h.db.NewSelect().Model(&states).
+		OrderExpr("ordering ASC").
+		Scan(ctx)
+
+	var bundles []db.Bundle
+	if user := getWebUser(r); user != nil {
+		h.db.NewSelect().Model(&bundles).
+			Where("owner_id = ?", user.ID).
+			OrderExpr("name ASC").
+			Scan(ctx)
+	}
+
+	// load project maintainers for delegate dropdown
+	var delegates []db.User
+	h.db.NewRaw(`
+		SELECT u.* FROM auth_user u
+		JOIN patchwork_userprofile up ON up.user_id = u.id
+		JOIN patchwork_userprofile_maintainer_projects mp ON mp.userprofile_id = up.id
+		WHERE mp.project_id = ?
+		ORDER BY u.username
+	`, project.ID).Scan(ctx, &delegates)
+
 	data := patchListData{
+		PC:          h.pageCtx(r),
 		Project:     project,
 		Patches:     patches,
 		Filters:     filters,
@@ -123,28 +147,136 @@ func (h *webHandler) patchList(w http.ResponseWriter, r *http.Request) {
 		BaseQuery:   bq,
 		SeriesNames: seriesNames,
 		TagAbbrevs:  tagAbbrevs,
+		Bundles:     bundles,
+		States:      states,
+		Delegates:   delegates,
 	}
 	patchListPage(data).Render(ctx, w)
 }
 
-func (h *webHandler) patchDetailRoute(w http.ResponseWriter, r *http.Request) {
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
-	rest := chi.URLParam(r, "*")
-
-	switch rest {
-	case "", "/":
-		h.patchDetail(w, r, linkname, rawMsgid)
-	case "mbox/":
-		h.patchMbox(w, r, linkname, rawMsgid)
-	case "raw/":
-		h.patchRaw(w, r, linkname, rawMsgid)
-	default:
-		notFoundPage(w)
+func (h *webHandler) patchListAction(w http.ResponseWriter, r *http.Request) {
+	if !requireLogin(w, r) {
+		return
 	}
+	ctx := r.Context()
+	user := getWebUser(r)
+	linkname := chi.URLParam(r, "linkname")
+
+	if !h.validateCSRF(r) {
+		http.Redirect(w, r, "/project/"+linkname+"/list/", http.StatusFound)
+		return
+	}
+
+	r.ParseForm()
+	action := r.FormValue("action")
+	patchIDs := r.Form["patch_id"]
+
+	if len(patchIDs) == 0 {
+		http.Redirect(w, r, "/project/"+linkname+"/list/", http.StatusFound)
+		return
+	}
+
+	var project db.Project
+	err := h.db.NewSelect().Model(&project).
+		Where("linkname = ?", linkname).Scan(ctx)
+	if err != nil {
+		notFoundPage(w)
+		return
+	}
+
+	switch action {
+	case "update":
+		q := h.db.NewUpdate().Model((*db.Patch)(nil)).
+			Where("id IN ?", bun.Tuple(patchIDs)).
+			Where("project_id = ?", project.ID)
+		changed := false
+		if stateID, _ := strconv.ParseInt(r.FormValue("change_state"), 10, 32); stateID > 0 {
+			q = q.Set("state_id = ?", stateID)
+			changed = true
+		}
+		if del := r.FormValue("change_delegate"); del == "clear" {
+			q = q.Set("delegate_id = NULL")
+			changed = true
+		} else if delegateID, _ := strconv.ParseInt(del, 10, 32); delegateID > 0 {
+			q = q.Set("delegate_id = ?", delegateID)
+			changed = true
+		}
+		switch r.FormValue("change_archive") {
+		case "true":
+			q = q.Set("archived = ?", true)
+			changed = true
+		case "false":
+			q = q.Set("archived = ?", false)
+			changed = true
+		}
+		if changed {
+			q.Exec(ctx)
+		}
+
+	case "add-to-bundle":
+		bundleID, _ := strconv.ParseInt(r.FormValue("bundle_id"), 10, 32)
+		if bundleID == 0 {
+			break
+		}
+		var bundle db.Bundle
+		err := h.db.NewSelect().Model(&bundle).
+			Where("id = ?", bundleID).
+			Where("owner_id = ?", user.ID).
+			Scan(ctx)
+		if err != nil {
+			break
+		}
+		var maxOrder int32
+		h.db.NewRaw(`SELECT COALESCE(MAX("order"), -1) FROM patchwork_bundlepatch WHERE bundle_id = ?`,
+			bundle.ID).Scan(ctx, &maxOrder)
+		for i, idStr := range patchIDs {
+			patchID, _ := strconv.ParseInt(idStr, 10, 32)
+			if patchID == 0 {
+				continue
+			}
+			bp := db.BundlePatch{
+				BundleID: bundle.ID,
+				PatchID:  int32(patchID),
+				Order:    maxOrder + int32(i) + 1,
+			}
+			h.db.NewInsert().Model(&bp).
+				On("CONFLICT DO NOTHING").
+				ExcludeColumn("id").Exec(ctx)
+		}
+
+	case "create-bundle":
+		name := strings.TrimSpace(r.FormValue("new_bundle"))
+		if name == "" {
+			break
+		}
+		bundle := db.Bundle{
+			OwnerID:   user.ID,
+			ProjectID: project.ID,
+			Name:      name,
+		}
+		if err := db.Insert(ctx, h.db, &bundle); err != nil {
+			break
+		}
+		for i, idStr := range patchIDs {
+			patchID, _ := strconv.ParseInt(idStr, 10, 32)
+			if patchID == 0 {
+				continue
+			}
+			bp := db.BundlePatch{
+				BundleID: bundle.ID,
+				PatchID:  int32(patchID),
+				Order:    int32(i),
+			}
+			h.db.NewInsert().Model(&bp).ExcludeColumn("id").Exec(ctx)
+		}
+	}
+
+	http.Redirect(w, r, "/project/"+linkname+"/list/", http.StatusFound)
 }
 
-func (h *webHandler) patchDetail(w http.ResponseWriter, r *http.Request, linkname, rawMsgid string) {
+func (h *webHandler) patchDetailPage(w http.ResponseWriter, r *http.Request) {
+	linkname := chi.URLParam(r, "linkname")
+	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
 	ctx := r.Context()
 	msgid := "<" + rawMsgid + ">"
 
@@ -236,18 +368,111 @@ func (h *webHandler) patchDetail(w http.ResponseWriter, r *http.Request, linknam
 		}
 	}
 
+	var seriesPatches []seriesPatchRef
+	var cover *db.Cover
+	if series != nil {
+		var sPatches []db.Patch
+		h.db.NewSelect().Model(&sPatches).
+			Column("id", "msgid", "name").
+			Where("series_id = ?", series.ID).
+			OrderExpr(`"number" ASC`).
+			Scan(ctx)
+		for _, sp := range sPatches {
+			seriesPatches = append(seriesPatches, seriesPatchRef{
+				Name:    sp.Name,
+				URL:     patchURL(project.Linkname, sp.Msgid),
+				Current: sp.ID == patch.ID,
+			})
+		}
+		if series.CoverLetterID != nil {
+			var c db.Cover
+			if h.db.NewSelect().Model(&c).
+				Column("id", "msgid", "name").
+				Where("id = ?", *series.CoverLetterID).
+				Scan(ctx) == nil {
+				cover = &c
+			}
+		}
+	}
+
+	// load states and delegates for edit form
+	var states []db.State
+	var delegates []db.User
+	canEdit := false
+	if user := getWebUser(r); user != nil {
+		h.db.NewSelect().Model(&states).
+			OrderExpr("ordering ASC").Scan(ctx)
+		h.db.NewRaw(`
+			SELECT u.* FROM auth_user u
+			JOIN patchwork_userprofile up ON up.user_id = u.id
+			JOIN patchwork_userprofile_maintainer_projects mp ON mp.userprofile_id = up.id
+			WHERE mp.project_id = ?
+			ORDER BY u.username
+		`, project.ID).Scan(ctx, &delegates)
+		canEdit = true
+	}
+
 	data := patchDetailData{
+		PC:             h.pageCtx(r),
 		Project:        project,
 		Patch:          patch,
 		Comments:       comments,
 		Checks:         checks,
 		Series:         series,
 		SeriesMetadata: metadata,
+		SeriesPatches:  seriesPatches,
+		Cover:          cover,
+		States:         states,
+		Delegates:      delegates,
+		CanEdit:        canEdit,
 	}
 	patchDetailPage(data).Render(ctx, w)
 }
 
-func (h *webHandler) patchRaw(w http.ResponseWriter, r *http.Request, linkname, rawMsgid string) {
+func (h *webHandler) patchUpdate(w http.ResponseWriter, r *http.Request) {
+	if !requireLogin(w, r) {
+		return
+	}
+	ctx := r.Context()
+	linkname := chi.URLParam(r, "linkname")
+	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	msgid := "<" + rawMsgid + ">"
+
+	if !h.validateCSRF(r) {
+		http.Redirect(w, r, patchURL(linkname, msgid), http.StatusFound)
+		return
+	}
+
+	r.ParseForm()
+
+	var patch db.Patch
+	err := h.db.NewSelect().Model(&patch).
+		Where("project_id IN (SELECT id FROM patchwork_project WHERE linkname = ?)", linkname).
+		Where("msgid = ?", msgid).
+		Scan(ctx)
+	if err != nil {
+		notFoundPage(w)
+		return
+	}
+
+	q := h.db.NewUpdate().Model(&patch).Where("id = ?", patch.ID)
+	if stateID, _ := strconv.ParseInt(r.FormValue("state"), 10, 32); stateID > 0 {
+		q = q.Set("state_id = ?", stateID)
+	}
+	if del := r.FormValue("delegate"); del == "" {
+		q = q.Set("delegate_id = NULL")
+	} else if delegateID, _ := strconv.ParseInt(del, 10, 32); delegateID > 0 {
+		q = q.Set("delegate_id = ?", delegateID)
+	}
+	q = q.Set("archived = ?", r.FormValue("archived") == "true")
+	q.Exec(ctx)
+
+	http.Redirect(w, r, patchURL(linkname, msgid), http.StatusFound)
+}
+
+func (h *webHandler) patchRawPage(w http.ResponseWriter, r *http.Request) {
+	linkname := chi.URLParam(r, "linkname")
+	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
 	ctx := r.Context()
 	msgid := "<" + rawMsgid + ">"
 

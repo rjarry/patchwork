@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -99,7 +99,7 @@ func (c *ProjectCreateCmd) Run(ctx *pw.Context) error {
 		CommitURLFormat:      c.CommitURL,
 		ListArchiveURLFormat: "",
 	}
-	_, err := ctx.DB.NewInsert().Model(&project).Exec(ctx)
+	err := db.Insert(ctx, ctx.DB, &project)
 	if err != nil {
 		return err
 	}

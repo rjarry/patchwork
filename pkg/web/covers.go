@@ -1,5 +1,5 @@
 // Patchwork - automated patch tracking system
-// Copyright (C) 2026 Robin Jarry <robin@jarry.cc>
+// Copyright (C) The Patchwork Contributors (see CONTRIBUTORS)
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -16,22 +16,9 @@ import (
 	"github.com/getpatchwork/patchwork/pkg/db"
 )
 
-func (h *webHandler) coverDetailRoute(w http.ResponseWriter, r *http.Request) {
+func (h *webHandler) coverDetailPage(w http.ResponseWriter, r *http.Request) {
 	linkname := chi.URLParam(r, "linkname")
 	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
-	rest := chi.URLParam(r, "*")
-
-	switch rest {
-	case "", "/":
-		h.coverDetail(w, r, linkname, rawMsgid)
-	case "mbox/":
-		h.coverMbox(w, r, linkname, rawMsgid)
-	default:
-		notFoundPage(w)
-	}
-}
-
-func (h *webHandler) coverDetail(w http.ResponseWriter, r *http.Request, linkname, rawMsgid string) {
 	ctx := r.Context()
 	msgid := "<" + rawMsgid + ">"
 
@@ -67,6 +54,32 @@ func (h *webHandler) coverDetail(w http.ResponseWriter, r *http.Request, linknam
 		}
 	}
 
+	var seriesPatches []seriesPatchRef
+	metadata := make(map[string]string)
+
+	if series != nil {
+		var sPatches []db.Patch
+		h.db.NewSelect().Model(&sPatches).
+			Column("id", "msgid", "name").
+			Where("series_id = ?", series.ID).
+			OrderExpr(`"number" ASC`).
+			Scan(ctx)
+		for _, sp := range sPatches {
+			seriesPatches = append(seriesPatches, seriesPatchRef{
+				Name: sp.Name,
+				URL:  patchURL(project.Linkname, sp.Msgid),
+			})
+		}
+
+		var rows []db.SeriesMetadata
+		h.db.NewSelect().Model(&rows).
+			Where("series_id = ?", series.ID).
+			Scan(ctx)
+		for _, r := range rows {
+			metadata[r.Key] = r.Value
+		}
+	}
+
 	var comments []db.CoverComment
 	h.db.NewSelect().Model(&comments).
 		Where("cover_id = ?", cover.ID).
@@ -91,10 +104,13 @@ func (h *webHandler) coverDetail(w http.ResponseWriter, r *http.Request, linknam
 	}
 
 	data := coverDetailData{
+		PC:       h.pageCtx(r),
 		Project:  project,
 		Cover:    cover,
 		Comments: comments,
 		Series:   series,
+		Patches:  seriesPatches,
+		Metadata: metadata,
 	}
 	coverDetailPage(data).Render(ctx, w)
 }

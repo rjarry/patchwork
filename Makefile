@@ -11,6 +11,18 @@ pw: $(src)
 	$(GO) generate ./...
 	$(GO) build -trimpath -o pw ./cmd/pw
 
+.PHONY: watch-http
+watch-http: pw
+	@trap 'jobs -p | xargs kill' EXIT; \
+	while true; do \
+		./pw http & \
+		pid=$$!; \
+		inotifywait -q --include pw .; \
+		kill $$pid; \
+		wait $$pid; \
+		sleep 1; \
+	done
+
 .state/docker-build: docker-compose.yml tools/docker/Dockerfile requirements-dev.txt
 	docker-compose build
 	mkdir -p .state
